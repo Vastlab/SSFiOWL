@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '/home/adhamija/kmcuda/src')
-from finch import FINCH
+from .finch import FINCH
 
 from libKMCUDA import kmeans_cuda
 import torch

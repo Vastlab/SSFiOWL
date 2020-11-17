@@ -24,8 +24,8 @@ def each_process_trainer(gpu, args, features_all_classes, completed_q, event, mo
             world_size=args.world_size,
             rank=gpu
         )
-    torch.cuda.set_device(gpu)
-    os.environ["CUDA_VISIBLE_DEVICES"] = f"{gpu}"
+        torch.cuda.set_device(gpu)
+        os.environ["CUDA_VISIBLE_DEVICES"] = f"{gpu}"
     # time.sleep(gpu*25)
 
     print(f"started process {gpu}/{args.world_size}")
@@ -51,8 +51,9 @@ def each_process_trainer(gpu, args, features_all_classes, completed_q, event, mo
         # print(f"[current_cls_name, current_class_output] {[current_cls_name, current_class_output]}")
         completed_q.put([current_cls_name, current_class_output])
     completed_q.put(("DONE",gpu))
-    print(f"{gpu} is WAITING NOW")
-    if not args.no_multiprocessing:
+    if not args.no_multiprocessing and args.world_size>1:
+        print(f"{args.no_multiprocessing} args.world_size {args.world_size}")
+        print(f"{gpu} is WAITING NOW")
         event.wait()
     print(f"ENDING {gpu}")
     return

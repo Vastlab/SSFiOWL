@@ -27,7 +27,6 @@ Read all features for ImageNet Images from MoCoV2 network
 
 import argparse
 import torch
-torch.manual_seed(0)
 import time
 import protocols
 import data_prep
@@ -39,6 +38,11 @@ import torch.multiprocessing as mp
 import pickle
 import pathlib
 import accumulation_algos
+import random
+torch.manual_seed(0)
+random.seed(0)
+np.random.seed(0)
+
 # torch.set_num_threads(32)
 def command_line_options():
     parser = argparse.ArgumentParser(
@@ -64,7 +68,7 @@ def command_line_options():
     parser.add_argument('--accumulation_algo', default='mimic_incremental', type=str,
                         help='Name of the accumulation algorithm to use',
                         choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
-    parser.add_argument("--unknowness_threshold", help="unknowness_threshold",
+    parser.add_argument("--unknowness_threshold", help="unknowness probability score above which a sample is considered as unknown",
                         type=float, default=0.5)
 
     parser.add_argument('--OOD_Algo', default='OpenMax', type=str,
@@ -78,6 +82,7 @@ def command_line_options():
     parser.add_argument("--new_classes_per_batch", help="new_classes_per_batch", type=int, default=5)
     parser.add_argument("--known_sample_per_batch", help="known_sample_per_batch", type=int, default=2500)
     parser.add_argument("--unknown_sample_per_batch", help="unknown_sample_per_batch", type=int, default=2500)
+    parser.add_argument("--initial_no_of_samples", help="initial_no_of_samples", type=int, default=15000)
 
     parser.add_argument("--no_of_exemplars", help="no_of_exemplars",
                         type=int, default=0)
@@ -101,9 +106,12 @@ def command_line_options():
     return args
 
 
-def get_current_batch(classes, features, batch_nos, batch, images):
+
+def get_current_batch(classes, features, batch_nos, batch, images, classes_to_fetch=None):
+    if classes_to_fetch is None:
+        classes_to_fetch = sorted(set(classes[batch_nos == batch].tolist()))
     current_batch = {}
-    for cls in sorted(set(classes[batch_nos == batch].tolist())):
+    for cls in classes_to_fetch:
         indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes == cls)]))[0]
         indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
         indx_of_interest = indx_of_interest[:, None].expand(-1, features[cls]['features'].shape[1])
@@ -124,23 +132,27 @@ if __name__ == "__main__":
         args.no_multiprocessing = True
 
 
-    # Get the protocols
+    # Get the operational protocols
     batch_nos, images, classes = protocols.open_world_protocol(initial_no_of_classes=args.initialization_classes,
                                                                new_classes_per_batch=args.new_classes_per_batch,
-                                                               initial_batch_size=15000,
+                                                               initial_batch_size=args.initial_no_of_samples,
                                                                known_sample_per_batch=args.known_sample_per_batch,
-                                                               unknown_sample_per_batch=args.known_sample_per_batch,
+                                                               unknown_sample_per_batch=args.unknown_sample_per_batch,
                                                                total_classes=args.total_no_of_classes)
-    val_batch_nos, val_images, val_classes = protocols.ImageNetIncremental(files_to_add = ['imagenet_1000_val'],
-                                                                           initial_no_of_classes=args.initialization_classes,
-                                                                           new_classes_per_batch=args.new_classes_per_batch,
-                                                                           total_classes=args.total_no_of_classes)
+    val_batch_nos, val_images, val_classes = protocols.OpenWorldValidation(files_to_add = ['imagenet_1000_val'],
+                                                                           classes=set(classes.tolist()))
+
+    # TODO
+    # val_batch_nos, val_images, val_classes = protocols.ImageNetIncremental(files_to_add = ['imagenet_1000_val'],
+    #                                                                        initial_no_of_classes=args.initialization_classes,
+    #                                                                        new_classes_per_batch=args.new_classes_per_batch,
+    #                                                                        total_classes=args.total_no_of_classes)
 
     # Read all Features
     args.feature_files = args.training_feature_files
     features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(classes.tolist())))
     args.feature_files = args.validation_feature_files
-    val_features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(val_classes.tolist())))
+    val_features = data_prep.prep_all_features_parallel(args)
 
     event = mp.Event()
     rolling_models = {}
@@ -150,6 +162,7 @@ if __name__ == "__main__":
     for batch in list_of_all_batch_nos:
         print(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
+
         print(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
 
         probabilities_for_train_set={}
@@ -169,14 +182,48 @@ if __name__ == "__main__":
                 probabilities_for_train_set = utils.convert_q_to_dict(args, completed_q, p, event)
             probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
 
-        # Find Unknown samples
-        # from IPython import embed;embed();
+
+            # Find Unknown Detection Accuracy
+
+            # C+1 Class Classification Accuracy
+
 
         # Accumulate all unknown samples
         accumulated_samples = get_learning_samples(args, current_batch, rolling_models, probabilities_for_train_set)
 
+        # Add exemplars
+        no_of_exemplar_batches = 0
+        if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
+            print(f"Finding and Adding exemplars to negatives")
+            current_batch_size=0
+            accumulated_samples[f'exemplars_{no_of_exemplar_batches}'] = []
+            for cls_name in rolling_models:
+                torch.manual_seed(0)
+                random.seed(0)
+                np.random.seed(0)
+                ind_of_interest = torch.randint(rolling_models[cls_name]['extreme_vectors'].shape[0],
+                                                (min(args.no_of_exemplars,
+                                                     rolling_models[cls_name]['extreme_vectors'].shape[0]),
+                                                 1))
+                current_exemplars = features[cls_name]['features'].gather(0,ind_of_interest.expand(
+                                                            -1,rolling_models[cls_name]['extreme_vectors'].shape[1]))
+                accumulated_samples[f'exemplars_{no_of_exemplar_batches}'].append(current_exemplars)
+                current_batch_size+=current_exemplars.shape[0]
+                if current_batch_size>=1000:
+                    accumulated_samples[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(accumulated_samples[f'exemplars_{no_of_exemplar_batches}'])
+                    no_of_exemplar_batches+=1
+                    accumulated_samples[f'exemplars_{no_of_exemplar_batches}'] = []
+                    current_batch_size=0
+            if type(accumulated_samples[f'exemplars_{no_of_exemplar_batches}']) == list:
+                if len(accumulated_samples[f'exemplars_{no_of_exemplar_batches}'])==0:
+                    del accumulated_samples[f'exemplars_{no_of_exemplar_batches}']
+                else:
+                    accumulated_samples[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(accumulated_samples[f'exemplars_{no_of_exemplar_batches}'])
+                    no_of_exemplar_batches+=1
+
+
         # Run enrollment for unknown samples probabilities_for_train_set
-        print(f"######################### Enrolling {len(accumulated_samples)} new classes #########################")
+        print(f"######################### Enrolling {len(accumulated_samples)-no_of_exemplar_batches} new classes #########################")
         event.clear()
         if args.no_multiprocessing:
             args.world_size = 1
@@ -193,7 +240,8 @@ if __name__ == "__main__":
         rolling_models.update(models)
 
         print(f"Preparing validation data")
-        current_batch = get_current_batch(val_classes, val_features, val_batch_nos, batch, val_images)
+        current_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
+                                          classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
         print(f"Running on validation data")
         event.clear()
@@ -211,7 +259,6 @@ if __name__ == "__main__":
         results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
 
         print(f"$$$$$$$$$$$$$$$$$$$$ len of rolling_models {len(rolling_models)} $$$$$$$$$$$$$$$$$$$$")
-        # from IPython import embed;embed();
 
     dir_name = f"{args.total_no_of_classes}_{args.initialization_classes}_{args.new_classes_per_batch}"
     file_name = f"{args.distance_metric}_{args.Clustering_Algo}_{args.tailsize}_{args.cover_threshold}_{args.distance_multiplier}"
@@ -223,22 +270,74 @@ if __name__ == "__main__":
     print(f"Saving to path {file_path}")
     pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.p", "wb"))
 
+    try:
+        CCA = []
+        for batch_no in sorted(results_for_all_batches.keys()):
+            scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+            correct = 0.
+            total = 0.
+            for test_cls in scores_order.tolist():
+                scores = results_for_all_batches[batch_no][test_cls]
+                total+=scores.shape[0]
+                max_indx = torch.argmax(scores,dim=1)
+                correct+=sum(scores_order[max_indx]==test_cls)
+            CCA.append((correct/total)*100.)
+            print(f"Accuracy on Batch {batch_no} : {CCA[-1]}")
+        print(f"Average Closed Set Classification Accuracy : {np.mean(CCA)}")
 
-    acc_to_plot=[]
-    batch_nos_to_plot = []
-    for batch_no in sorted(results_for_all_batches.keys()):
-        scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
-        correct = 0.
-        total = 0.
-        for test_cls in list(set(results_for_all_batches[batch_no].keys()) - set(['classes_order'])):
-            scores = results_for_all_batches[batch_no][test_cls]
-            total+=scores.shape[0]
-            max_indx = torch.argmax(scores,dim=1)
-            correct+=sum(scores_order[max_indx]==test_cls)
-        acc = (correct/total)*100.
-        acc_to_plot.append(acc)
-        batch_nos_to_plot.append(scores_order.shape[0])
-        print(f"Accuracy on Batch {batch_no} : {acc}")
+        UDA = []
+        OCA = []
+        for batch_no in sorted(results_for_all_batches.keys()):
+            unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
+                               set(results_for_all_batches[batch_no]['classes_order']) -
+                               set(['classes_order']))
+            scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+            UDA_correct = 0.
+            OCA_correct = 0.
+            total = 0.
+            UDA_total = 0.
+            for test_cls in list(set(results_for_all_batches[batch_no].keys()) - set(['classes_order'])):
+                scores = results_for_all_batches[batch_no][test_cls]
+                total+=scores.shape[0]
+                max_scores = torch.max(scores,dim=1)
+                unknowness_scores= 1 - max_scores.values
+                predicted_as_unknowns = sum(unknowness_scores>args.unknowness_threshold)
+                if test_cls in unknown_classes:
+                    UDA_correct+=predicted_as_unknowns
+                    OCA_correct+=predicted_as_unknowns
+                    UDA_total += scores.shape[0]
+                else:
+                    temp = np.array([scores_order[max_scores.indices[unknowness_scores <= args.unknowness_threshold]]])
+                    if len(temp.shape)>1:
+                        temp = np.squeeze(temp)
+                    OCA_correct+=sum(temp == test_cls)
+            UDA.append((UDA_correct/max(UDA_total,1))*100.)
+            OCA.append((OCA_correct/total)*100.)
+            print(f"Unknowness detection accuracy on Batch {batch_no} : {UDA[-1]}  OCA {OCA[-1]}")
+        print(f"Average Unknowness Accuracy : {np.mean(UDA)} OCA {np.mean(OCA)}")
+        print(f"For Tabeling")
+        print(f"{np.mean(UDA)} & {np.mean(OCA)} & {np.mean(CCA)}")
+        print(f"{round(np.mean(UDA).astype(np.float64),2)} & {round(np.mean(OCA),2)} & {round(np.mean(CCA),2)}")
 
-    print(f"Average accuracy : {np.mean(acc_to_plot)}")
-    # viz.plot_accuracy_vs_batch(acc_to_plot, batch_nos_to_plot,labels=args.OOD_Algo)
+
+        acc_to_plot=[]
+        batch_nos_to_plot = []
+
+        for batch_no in sorted(results_for_all_batches.keys()):
+            scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+            correct = 0.
+            total = 0.
+            for test_cls in list(set(results_for_all_batches[batch_no].keys()) - set(['classes_order'])):
+                scores = results_for_all_batches[batch_no][test_cls]
+                total+=scores.shape[0]
+                max_indx = torch.argmax(scores,dim=1)
+                correct+=sum(scores_order[max_indx]==test_cls)
+            acc = (correct/total)*100.
+            acc_to_plot.append(acc)
+            batch_nos_to_plot.append(scores_order.shape[0])
+            print(f"Accuracy on Batch {batch_no} : {acc}")
+
+        print(f"Average accuracy : {np.mean(acc_to_plot)}")
+        # viz.plot_accuracy_vs_batch(acc_to_plot, batch_nos_to_plot,labels=args.OOD_Algo)
+    except:
+        from IPython import embed;embed();

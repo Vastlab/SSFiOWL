@@ -3,11 +3,34 @@ import pairwisedistances
 from DistributionModels import weibull
 from clusteringAlgos import clustering
 
+
+def distances_analysis(pos_cls_name, features_all_classes, args, gpu, negatives):
+    max_positive_distances = find_distances_positives(pos_cls_name, features_all_classes, args, gpu)['distances_positive_median']
+    #['distances_positive_max']
+    pos_features = features_all_classes[pos_cls_name].to(f"cuda:{gpu}")
+    neg_features = []
+    total_count = 0
+    for i, cls in enumerate(negatives):
+        print(f"pos_cls_name {pos_cls_name} cls {cls}")
+        neg_features.append(negatives[cls])
+    neg_features = torch.cat(neg_features).to(f"cuda:{gpu}")
+    distances = pairwisedistances.__dict__[args.distance_metric](pos_features, neg_features)
+    min_distances = torch.min(distances,dim=1).values.cpu()
+    total_count += distances.nelement()
+    # from IPython import embed;embed();
+    return
+
+
+
+
+
 def find_distances_positives(pos_cls_name, features_all_classes, args, gpu):
     features = features_all_classes[pos_cls_name].to(f"cuda:{gpu}")
     distances = pairwisedistances.__dict__[args.distance_metric](features, features)
     distances = distances[~torch.eye(distances.shape[0]).type(torch.BoolTensor)].reshape(distances.shape[0],distances.shape[1]-1)
+    # from IPython import embed;embed();
     distances_to_return = {}
+    distances_to_return['distances_positive_median'] = torch.median(distances,dim=1).values.cpu()
     distances_to_return['distances_positive_min'] = torch.min(distances,dim=1).values.cpu()
     distances_to_return['distances_positive_max'] = torch.max(distances,dim=1).values.cpu()
     distances_to_return['distances_positive_sum'] = torch.sum(distances).cpu()
@@ -23,7 +46,7 @@ def find_distances_negatives(pos_cls_name, features_all_classes, args, gpu):
     distances_negative_sum = torch.tensor(0)
     distances_negative_sum_squared = torch.tensor(0)
     total_count = 0
-    for i, cls in enumerate(set(list(features_all_classes.keys()))-set(pos_cls_name)):
+    for i, cls in enumerate(set(list(features_all_classes.keys()))-set([pos_cls_name])):
         neg_features.append(features_all_classes[cls])
         if len(neg_features) == chunk_size:
             neg_features = torch.cat(neg_features).to(f"cuda:{gpu}")
@@ -34,18 +57,21 @@ def find_distances_negatives(pos_cls_name, features_all_classes, args, gpu):
             total_count += distances.nelement()
             neg_features = []
     if len(neg_features) > 0:
+        # from IPython import embed;embed();
         neg_features = torch.cat(neg_features).to(f"cuda:{gpu}")
         distances = pairwisedistances.__dict__[args.distance_metric](pos_features, neg_features)
         min_distances.append(torch.min(distances,dim=1).values.cpu())
         distances_negative_sum = distances_negative_sum + torch.sum(distances).cpu()
         distances_negative_sum_squared = distances_negative_sum_squared + torch.sum(distances ** 2).cpu()
         total_count += distances.nelement()
-    min_distances = torch.stack(min_distances,dim = 0)
+    # from IPython import embed;embed();
+    min_distances = torch.stack(min_distances,dim = 1)
     distances_to_return = {}
-    distances_to_return['distances_negative_min'] = torch.min(min_distances, dim=1).values.cpu()
+    distances_to_return['distances_negative_median'] = torch.median(distances,dim=1).values.cpu()#torch.min(min_distances, dim=0).values.cpu()
+    distances_to_return['distances_negative_min'] = min_distances.cpu()#torch.min(min_distances, dim=0).values.cpu()
     distances_to_return['distances_negative_sum'] = distances_negative_sum
     distances_to_return['distances_negative_sum_squared'] = distances_negative_sum_squared
-    distances_to_return['total_count'] = distances.nelement()
+    distances_to_return['total_count'] = total_count
     return distances_to_return
 
 def find_distances_OOD_negatives(pos_cls_name, features_all_classes, args, gpu):
@@ -243,7 +269,9 @@ def EVM(pos_cls_name, features_all_classes, args, gpu, models=None):
 
     all_neg_features = []
     temp = []
-    for cls_name in set(features_all_classes.keys())-set(pos_cls_name):
+    print(f"negative classes {set(features_all_classes.keys())-set([pos_cls_name])}")
+    print(f"negative classes {len(set(features_all_classes.keys())-set([pos_cls_name]))}")
+    for cls_name in set(features_all_classes.keys())-set([pos_cls_name]):
         temp.append(features_all_classes[cls_name])
         if len(temp) == chunk_size:
             all_neg_features.append(torch.cat(temp))
@@ -271,7 +299,10 @@ def EVM(pos_cls_name, features_all_classes, args, gpu, models=None):
         "Distances of samples to themselves is not zero"
     sortedTensor = torch.cat(negative_distances, dim=1).to(f"cuda:{gpu}")
     # Perform actual EVM training
-    weibull_model = fit_low(sortedTensor, args.distance_multiplier, tailsize, gpu)
+    try:
+        weibull_model = fit_low(sortedTensor, args.distance_multiplier, tailsize, gpu)
+    except:
+        from IPython import embed;embed();
     extreme_vectors_models, extreme_vectors_indexes, covered_vectors = set_cover(weibull_model,
                                                                                  positive_distances.cuda(),
                                                                                  args.cover_threshold)

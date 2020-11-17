@@ -151,6 +151,7 @@ if __name__ == "__main__":
                     current_batch[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(current_batch[f'exemplars_{no_of_exemplar_batches}'])
                     no_of_exemplar_batches+=1
                     current_batch[f'exemplars_{no_of_exemplar_batches}'] = []
+                    current_batch_size=0
             if type(current_batch[f'exemplars_{no_of_exemplar_batches}']) == list:
                 if len(current_batch[f'exemplars_{no_of_exemplar_batches}'])==0:
                     del current_batch[f'exemplars_{no_of_exemplar_batches}']
@@ -169,6 +170,7 @@ if __name__ == "__main__":
                     current_batch[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(current_batch[f'exemplars_{no_of_exemplar_batches}'])
                     no_of_exemplar_batches+=1
                     current_batch[f'exemplars_{no_of_exemplar_batches}'] = []
+                    current_batch_size=0
             if type(current_batch[f'exemplars_{no_of_exemplar_batches}']) == list:
                 if len(current_batch[f'exemplars_{no_of_exemplar_batches}'])==0:
                     del current_batch[f'exemplars_{no_of_exemplar_batches}']
@@ -186,7 +188,8 @@ if __name__ == "__main__":
         #     from IPython import embed;embed();
 
         event.clear()
-        if args.no_multiprocessing:
+        if args.no_multiprocessing or len(set(classes[batch_nos==batch].tolist())-set(rolling_models.keys()))==1:
+            print("HERE no_multiprocessing")
             args.world_size = 1
             common_operations.each_process_trainer(0, args, current_batch, completed_q, event)
             p=None
@@ -211,7 +214,8 @@ if __name__ == "__main__":
         print(f"Running on validation data")
 
         event.clear()
-        if args.no_multiprocessing:
+        if args.no_multiprocessing or len(set(val_classes[val_batch_nos==batch].tolist()))==1:
+            print("HERE no_multiprocessing")
             args.world_size = 1
             common_operations.each_process_trainer(0, args, current_batch, completed_q, event, rolling_models)
             p = None
@@ -253,4 +257,5 @@ if __name__ == "__main__":
         batch_nos_to_plot.append(scores_order.shape[0])
         print(f"Accuracy on Batch {batch_no} : {acc}")
 
+    print(f"Average Accuracy {np.mean(acc_to_plot)}")
     # viz.plot_accuracy_vs_batch(acc_to_plot, batch_nos_to_plot,labels=args.OOD_Algo)

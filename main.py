@@ -191,13 +191,13 @@ if __name__ == "__main__":
         if args.no_multiprocessing or len(set(classes[batch_nos==batch].tolist())-set(rolling_models.keys()))==1:
             print("HERE no_multiprocessing")
             args.world_size = 1
-            common_operations.each_process_trainer(0, args, current_batch, completed_q, event)
+            common_operations.call_specific_approach(0, args, current_batch, completed_q, event)
             p=None
             models = utils.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
         # if True:
-            p = mp.spawn(common_operations.each_process_trainer,
+            p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, current_batch, completed_q, event),
                          nprocs=args.world_size,
                          join=False)
@@ -217,12 +217,12 @@ if __name__ == "__main__":
         if args.no_multiprocessing or len(set(val_classes[val_batch_nos==batch].tolist()))==1:
             print("HERE no_multiprocessing")
             args.world_size = 1
-            common_operations.each_process_trainer(0, args, current_batch, completed_q, event, rolling_models)
+            common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
             p = None
             results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
-            p = mp.spawn(common_operations.each_process_trainer,
+            p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, current_batch, completed_q, event, rolling_models),
                          nprocs=args.world_size, join=False)
             results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)

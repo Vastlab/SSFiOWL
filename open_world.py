@@ -171,12 +171,12 @@ if __name__ == "__main__":
             event.clear()
             if args.no_multiprocessing:
                 args.world_size = 1
-                common_operations.each_process_trainer(0, args, current_batch, completed_q, event, rolling_models)
+                common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
                 p = None
                 probabilities_for_train_set = utils.convert_q_to_dict(args, completed_q, p, event)
                 args.world_size = torch.cuda.device_count()
             else:
-                p = mp.spawn(common_operations.each_process_trainer,
+                p = mp.spawn(common_operations.call_specific_approach,
                              args=(args, current_batch, completed_q, event, rolling_models),
                              nprocs=args.world_size, join=False)
                 probabilities_for_train_set = utils.convert_q_to_dict(args, completed_q, p, event)
@@ -227,12 +227,12 @@ if __name__ == "__main__":
         event.clear()
         if args.no_multiprocessing:
             args.world_size = 1
-            common_operations.each_process_trainer(0, args, accumulated_samples, completed_q, event)
+            common_operations.call_specific_approach(0, args, accumulated_samples, completed_q, event)
             p=None
             models = utils.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
-            p = mp.spawn(common_operations.each_process_trainer,
+            p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, accumulated_samples, completed_q, event),
                          nprocs=args.world_size,
                          join=False)
@@ -247,12 +247,12 @@ if __name__ == "__main__":
         event.clear()
         if args.no_multiprocessing:
             args.world_size = 1
-            common_operations.each_process_trainer(0, args, current_batch, completed_q, event, rolling_models)
+            common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
             p = None
             results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
-            p = mp.spawn(common_operations.each_process_trainer,
+            p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, current_batch, completed_q, event, rolling_models),
                          nprocs=args.world_size, join=False)
             results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)

@@ -187,23 +187,6 @@ def MultiModalOpenMax_Inference(pos_cls_name, features_all_classes, args, gpu, m
     probs = torch.stack(probs,dim=-1).cpu()
     print(f"probs {probs}")
     return probs
-    """
-    for class_name in sorted(models.keys()):
-        probs_current_cls = []
-        for model_no in models[class_name]['MAV']:
-            MAV = models[class_name]['MAV'][model_no].to(f"cuda:{gpu}").double()
-            distances = pairwisedistances.__dict__[args.distance_metric](features, MAV)
-            # print(f"distances {torch.max(distances)} {torch.min(distances)}")
-            # print(f"distances {distances.shape}")
-            # print(f"fvdfvdfv {models[class_name]['weibull_model'][model_no].wscore(distances)} {models[class_name]['weibull_model'][model_no].wscore(distances).shape}")
-            probs_current_cls.append(1 - models[class_name]['weibull_model'][model_no].wscore(distances.cpu()))
-        probs_current_cls = torch.cat(probs_current_cls, dim=1)
-        probs.append(torch.max(probs_current_cls, dim=1).values)
-    probs = torch.stack(probs,dim=-1)
-    # print(f"probs {probs}")
-    # print(f"probs.shape {probs.shape} {torch.min(probs)} {torch.max(probs)}")
-    return probs
-    """
 
 
 def fit_low(distances, distance_multiplier, tailsize, gpu):

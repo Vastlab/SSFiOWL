@@ -23,7 +23,7 @@ def call_specific_approach(gpu, args, features_all_classes, completed_q, event, 
         if 'exemplars_' in _:
             exemplar_classes.append(_)
     if len(exemplar_classes):
-        print(f"############### Removing Exemplars from positive classes to be processed")
+        print(" Removing Exemplars from positive classes to be processed ".center(90, '#'))
     class_names = sorted(list(set(class_names)-set(exemplar_classes)))
     div, mod = divmod(len(class_names), args.world_size)
     pos_classes_to_process = class_names[gpu * div + min(gpu, mod):(gpu + 1) * div + min(gpu + 1, mod)]

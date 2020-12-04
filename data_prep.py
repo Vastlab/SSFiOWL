@@ -3,14 +3,11 @@ import math
 import h5py
 import torch
 import torch.multiprocessing as mp
-# import multiprocessing as mp
 from functools import partial
 import numpy as np
-# import tables
 
 def read_features(args, feature_file_names=None, cls_to_process=None):
     try:
-        # h5_objs = [tables.open_file(file_name, driver="H5FD_CORE") for file_name in feature_file_names]
         h5_objs = [h5py.File(file_name, "r") for file_name in feature_file_names]
         file_layer_comb = list(zip(h5_objs, args.layer_names))
         if cls_to_process is None:
@@ -49,17 +46,9 @@ def prep_all_features_parallel(args, all_class_names=None):
         all_class_names = all_class_names[:100]
         cls_per_chunk = 2
     all_class_batches = [all_class_names[i:i+cls_per_chunk] for i in range(0, len(all_class_names), cls_per_chunk)]
-    p = mp.Pool(30)#min(len(all_class_batches),mp.cpu_count()))
+    p = mp.Pool(min(30,mp.cpu_count()))
     all_data = p.map(partial(prep_single_chunk, args), all_class_batches)
-    # all_data = [prep_single_chunk(args, all_class_batches[0])]
     all_classes={}
     for data_returned in all_data:
         all_classes.update(data_returned)
-    # all_classes['features']=[]
-    # all_classes['image_names']=[]
-    # features, image_names = zip(*all_data)
-    # features = torch.cat(features)
-    # image_names = [_ for i in image_names for _ in i]
-    # image_names = np.array(image_names)
-    # return features, image_names
     return all_classes

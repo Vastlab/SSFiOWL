@@ -141,25 +141,30 @@ if __name__ == "__main__":
         accumulated_samples = get_learning_samples(args, current_batch, rolling_models, probabilities_for_train_set)
 
         # Add exemplars
+        exemplars_to_add={}
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-            accumulated_samples.update(exemplar_selection.random_selector(features, rolling_models,
-                                                                          no_of_exemplars=args.no_of_exemplars))
+            exemplars_to_add = exemplar_selection.random_selector(features, rolling_models,
+                                                                  no_of_exemplars=args.no_of_exemplars)
+            accumulated_samples.update(exemplars_to_add)
 
         # Run enrollment for unknown samples probabilities_for_train_set
-        print(f"{f' Enrolling {len(accumulated_samples)} new classes may include exemplars '.center(90, '#')}")
+        no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
+        print(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
         event.clear()
-        if args.no_multiprocessing:
+        if args.no_multiprocessing or  no_of_classes_to_enroll== 1:
             args.world_size = 1
             common_operations.call_specific_approach(0, args, accumulated_samples, completed_q, event)
             p=None
             models = utils.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
+            args.world_size = min(no_of_classes_to_enroll, torch.cuda.device_count())
             p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, accumulated_samples, completed_q, event),
                          nprocs=args.world_size,
                          join=False)
             models = utils.convert_q_to_dict(args, completed_q, p, event)
+            args.world_size = torch.cuda.device_count()
         rolling_models.update(models)
 
         print(f"Preparing validation data")
@@ -180,8 +185,6 @@ if __name__ == "__main__":
                          nprocs=args.world_size, join=False)
             results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
         results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
-
-        print(f"{f' len of rolling_models {len(rolling_models)} '.center(90, '$')}")
 
     dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \
                f"_NewClassesPerBatch-{args.new_classes_per_batch}"

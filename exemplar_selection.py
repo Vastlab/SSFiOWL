@@ -16,12 +16,13 @@ def random_selector(features, rolling_models,no_of_exemplars=None):
         torch.manual_seed(0)
         random.seed(0)
         np.random.seed(0)
-        ind_of_interest = torch.randint(rolling_models[cls_name]['extreme_vectors'].shape[0],
+        ev_key_name = list(set(rolling_models[cls_name].keys())-{'weibulls'})[0]
+        ind_of_interest = torch.randint(rolling_models[cls_name][ev_key_name].shape[0],
                                         (min(no_of_exemplars,
-                                             rolling_models[cls_name]['extreme_vectors'].shape[0]),
+                                             rolling_models[cls_name][ev_key_name].shape[0]),
                                          1))
         current_exemplars = features[cls_name]['features'].gather(0, ind_of_interest.expand(
-            -1, rolling_models[cls_name]['extreme_vectors'].shape[1]))
+            -1, rolling_models[cls_name][ev_key_name].shape[1]))
         exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'].append(current_exemplars)
         current_batch_size += current_exemplars.shape[0]
         if current_batch_size >= 1000:

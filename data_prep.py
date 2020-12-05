@@ -32,7 +32,7 @@ def prep_single_chunk(args, cls_to_process):
     data_to_return = {}
     for cls, feature, image_names in features_gen:
         data_to_return[cls] = {}
-        data_to_return[cls]['images'] = np.array([f"{cls}/{_}" for _ in image_names])
+        data_to_return[cls]['images'] = np.array([f"{cls}/{_}" for _ in image_names], dtype='<U30')
         data_to_return[cls]['features'] = feature
     return data_to_return
 

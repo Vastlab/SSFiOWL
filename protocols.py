@@ -19,8 +19,8 @@ def protocol(func):
         all_batches = func(*args, **kwargs, all_images=all_images)
         batch_nos, images, classes = zip(*all_batches)
         batch_nos = np.array(batch_nos)
-        images = np.array(images)
-        classes = np.array(classes)
+        images = np.array(images, dtype='<U30')
+        classes = np.array(classes, dtype='<U30')
         return batch_nos, images, classes
     return wrapper
 

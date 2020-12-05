@@ -43,6 +43,9 @@ def command_line_options():
     parser.add_argument('--OOD_Algo', default='OpenMax', type=str,
                         help='Name of the Out of Distribution detection algorithm',
                         choices=['OpenMax','EVM','MultiModalOpenMax'])
+    parser.add_argument('--Clustering_Algo', default='finch', type=str,
+                        help='Clustering algorithm used for multi modal openmax',
+                        choices=['KMeans','dbscan','finch'])
 
     parser.add_argument("--total_no_of_classes", help="total_no_of_classes", type=int, default=100)
     parser.add_argument("--initialization_classes", help="initialization_classes", type=int, default=50)

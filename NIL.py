@@ -52,7 +52,7 @@ def command_line_options():
     parser.add_argument("--all_samples", help="all_samples", action="store_true", default=False)
 
     parser.add_argument("--tailsize", help="tail size to use",
-                        type=float, default=33998.)
+                        type=float, default=1.0)
     parser.add_argument("--cover_threshold", help="cover threshold to use",
                         type=float, default=0.7)
     parser.add_argument("--distance_multiplier", help="distance multiplier to use",

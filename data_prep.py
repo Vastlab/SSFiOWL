@@ -1,10 +1,19 @@
-import utils
-import math
+from utile.tools import logger
 import h5py
 import torch
 import torch.multiprocessing as mp
 from functools import partial
 import numpy as np
+from pathlib import Path
+
+def params(parser):
+    data_prep_params = parser.add_argument_group('Pre-extracted feature details')
+    data_prep_params.add_argument("--training_feature_files", nargs="+", help="HDF5 file path for training data",
+                                  default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_train.hdf5"])
+    data_prep_params.add_argument("--validation_feature_files", nargs="+", help="HDF5 file path for validation data",
+                                  default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_val.hdf5"])
+    data_prep_params.add_argument("--layer_names", nargs="+", help="Layer names to train EVM on", default=["avgpool"])
+    return parser
 
 def read_features(args, feature_file_names=None, cls_to_process=None):
     try:
@@ -36,7 +45,7 @@ def prep_single_chunk(args, cls_to_process):
         data_to_return[cls]['features'] = feature
     return data_to_return
 
-@utils.time_recorder
+@logger.time_recorder
 def prep_all_features_parallel(args, all_class_names=None):
     for f in args.feature_files:
         assert Path(f).is_file(),f"File {f} does not exist"

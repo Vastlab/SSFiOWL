@@ -1,5 +1,5 @@
 import torch
-import utils
+from utile.tools import logger
 
 
 def find_unknowness_probabilities(probabilities_for_train_set, unknowness_threshold=None):
@@ -11,7 +11,7 @@ def find_unknowness_probabilities(probabilities_for_train_set, unknowness_thresh
     return unknowness_scores
 
 
-@utils.time_recorder
+@logger.time_recorder
 def mimic_incremental(args, current_batch,rolling_models, probabilities_for_train_set):
     accumulated_samples = {}
     for c in current_batch:
@@ -20,7 +20,7 @@ def mimic_incremental(args, current_batch,rolling_models, probabilities_for_trai
     return accumulated_samples
 
 
-@utils.time_recorder
+@logger.time_recorder
 def learn_new_unknowns(args, operating_batch,rolling_models, probabilities_for_train_set):
     if len(rolling_models.keys())==0:
         return operating_batch

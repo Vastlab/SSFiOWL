@@ -4,67 +4,50 @@ import numpy as np
 import torch.multiprocessing as mp
 import pickle
 import pathlib
-import random
 import protocols
 import exemplar_selection
 import data_prep
-import utils
 import common_operations
 import viz
+from utile import opensetAlgos
 
-torch.manual_seed(0)
-random.seed(0)
-np.random.seed(0)
 
 def command_line_options():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description="""This script runs experiments for incremental learning 
-                                                    i.e. Table 1 and 2 from the Paper"""
-                                     )
-    parser.add_argument("--training_feature_files",
-                        nargs="+",
-                        default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_train.hdf5"],
-                        help="HDF5 feature files")
-    parser.add_argument("--validation_feature_files",
-                        nargs="+",
-                        default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_val.hdf5"],
-                        help="HDF5 feature files")
-    parser.add_argument("--layer_names",
-                        nargs="+",
-                        help="Layer names to train EVM on",
-                        default=["features"])
-    parser.add_argument("--debug", help="debugging flag", action="store_true", default=False)
-    parser.add_argument("--no_multiprocessing", help="debugging flag", action="store_true", default=False)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     add_help=False, usage=argparse.SUPPRESS)
 
-    parser.add_argument('--OOD_Algo', default='OpenMax', type=str,
-                        help='Name of the Out of Distribution detection algorithm',
-                        choices=['OpenMax','EVM','MultiModalOpenMax'])
-    parser.add_argument('--Clustering_Algo', default='finch', type=str,
-                        help='Clustering algorithm used for multi modal openmax',
-                        choices=['KMeans','dbscan','finch'])
-
-    parser.add_argument("--total_no_of_classes", help="total_no_of_classes", type=int, default=100)
-    parser.add_argument("--initialization_classes", help="initialization_classes", type=int, default=50)
-    parser.add_argument("--new_classes_per_batch", help="new_classes_per_batch", type=int, default=[1,2,5,10], nargs="+")
-
-    parser.add_argument("--no_of_exemplars", help="no_of_exemplars",
-                        type=int, default=0)
-    parser.add_argument("--all_samples", help="all_samples", action="store_true", default=False)
-
-    parser.add_argument("--tailsize", help="tail size to use",
-                        type=float, default=1.0)
-    parser.add_argument("--cover_threshold", help="cover threshold to use",
-                        type=float, default=0.7)
-    parser.add_argument("--distance_multiplier", help="distance multiplier to use",
-                        type=float, default=0.55)
-    parser.add_argument('--distance_metric', default='cosine', type=str,
-                        help='distance metric to use', choices=['cosine','euclidean'])
-
+    parser.add_argument("--debug", action="store_true", default=False, help="debugging flag\ndefault: %(default)s")
+    parser.add_argument("--no_multiprocessing", action="store_true", default=False,
+                        help="Use for debugging or running on single GPU\ndefault: %(default)s")
     parser.add_argument('--port_no', default='9451', type=str,
-                        help='port number for multiprocessing')
-    parser.add_argument("--output_dir", help="output_dir", type=str, default='/scratch/adhamija/results/')
+                        help='port number for multiprocessing\ndefault: %(default)s')
+    parser.add_argument("--no_of_exemplars", type=int, default=0,
+                        help="No of exemplars used during incremental step\ndefault: %(default)s")
+    parser.add_argument("--all_samples", action="store_true", default=False,
+                        help="Enroll new classes considering all previously encountered samples\ndefault: %(default)s")
 
+    parser.add_argument("--output_dir", type=str, default='/scratch/adhamija/results/', help="Results directory")
+    parser.add_argument('--OOD_Algo', default='EVM', type=str, choices=['OpenMax','EVM','MultiModalOpenMax'],
+                        help='Name of the openset detection algorithm\ndefault: %(default)s')
 
+    parser = data_prep.params(parser)
+
+    protocol_params = parser.add_argument_group('Protocol params')
+    protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
+                                 help="Total no of classes\ndefault: %(default)s")
+    protocol_params.add_argument("--initialization_classes", type=int, default=50,
+                                 help="No of classes in first batch\ndefault: %(default)s")
+    protocol_params.add_argument("--new_classes_per_batch", type=int, default=[1,2,5,10], nargs="+",
+                                 help="No of new classes added per batch\ndefault: %(default)s")
+
+    known_args, unknown_args = parser.parse_known_args()
+
+    # Adding Algorithm Params
+    params_parser = argparse.ArgumentParser(parents = [parser],formatter_class = argparse.RawTextHelpFormatter,
+                                            usage=argparse.SUPPRESS,
+                                            description = "This script runs experiments for incremental learning " 
+                                                          "i.e. Table 1 and 2 from the Paper")
+    parser = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
     args = parser.parse_args()
     return args
 
@@ -125,14 +108,14 @@ if __name__ == "__main__":
                 args.world_size = 1
                 common_operations.call_specific_approach(0, args, current_batch, completed_q, event)
                 p=None
-                models = utils.convert_q_to_dict(args, completed_q, p, event)
+                models = common_operations.convert_q_to_dict(args, completed_q, p, event)
             else:
                 args.world_size = min(no_of_classes_to_process, torch.cuda.device_count())
                 p = mp.spawn(common_operations.call_specific_approach,
                              args=(args, current_batch, completed_q, event),
                              nprocs=args.world_size,
                              join=False)
-                models = utils.convert_q_to_dict(args, completed_q, p, event)
+                models = common_operations.convert_q_to_dict(args, completed_q, p, event)
 
             print(f"Preparing validation data")
             rolling_models.update(models)
@@ -150,14 +133,14 @@ if __name__ == "__main__":
                 args.world_size = 1
                 common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
                 p = None
-                results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
+                results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
                 args.world_size = torch.cuda.device_count()
             else:
                 args.world_size = min(no_of_classes_to_process, torch.cuda.device_count())
                 p = mp.spawn(common_operations.call_specific_approach,
                              args=(args, current_batch, completed_q, event, rolling_models),
                              nprocs=args.world_size, join=False)
-                results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
+                results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
             results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
 
 

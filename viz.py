@@ -3,7 +3,6 @@ This file was used to create the plots in the supplemental material.
 """
 
 import numpy as np
-import utils
 import matplotlib
 from matplotlib import pyplot as plt
 import pickle

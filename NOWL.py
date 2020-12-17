@@ -1,76 +1,65 @@
 import argparse
 import pickle
 import pathlib
-import random
 import numpy as np
 import torch
 import torch.multiprocessing as mp
 import protocols
 import data_prep
-import utils
 import common_operations
 import exemplar_selection
 import eval
 import accumulation_algos
-torch.manual_seed(0)
-random.seed(0)
-np.random.seed(0)
+from utile import opensetAlgos
 
 def command_line_options():
-    parser = argparse.ArgumentParser(formatter_class = argparse.ArgumentDefaultsHelpFormatter,
-                                     description = """This script runs the open world experiments from the paper
-                                                      i.e. Table 3""")
-    parser.add_argument("--training_feature_files",
-                        nargs="+",
-                        default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_train.hdf5"],
-                        help="HDF5 feature files")
-    parser.add_argument("--validation_feature_files",
-                        nargs="+",
-                        default=["/net/reddwarf/bigscratch/adhamija/Features/MOCOv2/imagenet_1000_val.hdf5"],
-                        help="HDF5 feature files")
-    parser.add_argument("--layer_names",
-                        nargs="+",
-                        help="Layer names to train EVM on",
-                        default=["features"])
-    parser.add_argument("--debug", help="debugging flag", action="store_true", default=False)
-    parser.add_argument("--no_multiprocessing", help="debugging flag", action="store_true", default=False)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     add_help=False, usage=argparse.SUPPRESS)
 
-    parser.add_argument('--accumulation_algo', default='mimic_incremental', type=str,
-                        help='Name of the accumulation algorithm to use',
-                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
-    parser.add_argument("--unknowness_threshold", help="unknowness probability score above which a sample is considered as unknown",
-                        type=float, default=0.5)
-    parser.add_argument('--OOD_Algo', default='OpenMax', type=str,
-                        help='Name of the Out of Distribution detection algorithm',
-                        choices=['OpenMax','EVM','MultiModalOpenMax'])
-    parser.add_argument('--Clustering_Algo', default='finch', type=str,
-                        help='Clustering algorithm used for multi modal openmax',
-                        choices=['KMeans','dbscan','finch'])
-
-    parser.add_argument("--total_no_of_classes", help="total_no_of_classes", type=int, default=100)
-    parser.add_argument("--initialization_classes", help="initialization_classes", type=int, default=50)
-    parser.add_argument("--new_classes_per_batch", help="new_classes_per_batch", type=int, default=5)
-    parser.add_argument("--known_sample_per_batch", help="known_sample_per_batch", type=int, default=2500)
-    parser.add_argument("--unknown_sample_per_batch", help="unknown_sample_per_batch", type=int, default=2500)
-    parser.add_argument("--initial_no_of_samples", help="initial_no_of_samples", type=int, default=15000)
-
-    parser.add_argument("--no_of_exemplars", help="no_of_exemplars",
-                        type=int, default=0)
-    parser.add_argument("--all_samples", help="all_samples", action="store_true", default=False)
-
-    parser.add_argument("--tailsize", help="tail size to use",
-                        type=float, default=33998.)
-    parser.add_argument("--cover_threshold", help="cover threshold to use",
-                        type=float, default=0.7)
-    parser.add_argument("--distance_multiplier", help="distance multiplier to use",
-                        type=float, default=0.55)
-    parser.add_argument('--distance_metric', default='cosine', type=str,
-                        help='distance metric to use', choices=['cosine','euclidean'])
-
+    parser.add_argument("--debug", action="store_true", default=False, help="debugging flag\ndefault: %(default)s")
+    parser.add_argument("--no_multiprocessing", action="store_true", default=False,
+                        help="Use for debugging or running on single GPU\ndefault: %(default)s")
     parser.add_argument('--port_no', default='9451', type=str,
-                        help='port number for multiprocessing')
-    parser.add_argument("--output_dir", help="output_dir", type=str, default='/scratch/adhamija/results/')
+                        help='port number for multiprocessing\ndefault: %(default)s')
+    parser.add_argument("--no_of_exemplars", type=int, default=0,
+                        help="No of exemplars used during incremental step\ndefault: %(default)s")
+    parser.add_argument("--all_samples", action="store_true", default=False,
+                        help="Enroll new classes considering all previously encountered samples\ndefault: %(default)s")
 
+    parser.add_argument("--output_dir", type=str, default='/scratch/adhamija/results/', help="Results directory")
+    parser.add_argument('--OOD_Algo', default='OpenMax', type=str, choices=['OpenMax','EVM','MultiModalOpenMax'],
+                        help='Name of the Out of Distribution detection algorithm\ndefault: %(default)s')
+
+    parser = data_prep.params(parser)
+
+    parser.add_argument('--accumulation_algo', default='learn_new_unknowns', type=str,
+                        help='Name of the accumulation algorithm to use\ndefault: %(default)s',
+                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
+    parser.add_argument("--unknowness_threshold", type=float, default=0.5,
+                        help="unknowness probability score above which a sample is considered as unknown\ndefault: %(default)s")
+
+    protocol_params = parser.add_argument_group('Protocol params')
+    protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
+                                 help="Total no of classes\ndefault: %(default)s")
+    protocol_params.add_argument("--initialization_classes", type=int, default=50,
+                                 help="No of classes in first batch\ndefault: %(default)s")
+    protocol_params.add_argument("--new_classes_per_batch", type=int, default=5,
+                                 help="No of new classes added per batch\ndefault: %(default)s")
+    protocol_params.add_argument("--known_sample_per_batch", type=int, default=2500,
+                                 help="Samples belonging to known classes in every incremental batch\ndefault: %(default)s")
+    protocol_params.add_argument("--unknown_sample_per_batch", type=int, default=2500,
+                                 help="Samples belonging to unknown classes in every incremental batch\ndefault: %(default)s")
+    protocol_params.add_argument("--initial_no_of_samples", type=int, default=15000,
+                                 help="Number of samples in the first/initialization batch\ndefault: %(default)s")
+
+    known_args, unknown_args = parser.parse_known_args()
+
+    # Adding Algorithm Params
+    params_parser = argparse.ArgumentParser(parents = [parser],formatter_class = argparse.RawTextHelpFormatter,
+                                            usage=argparse.SUPPRESS,
+                                            description = "This script runs the open world experiments from the paper"
+                                                          "i.e. Table 3")
+    parser = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
     args = parser.parse_args()
     return args
 
@@ -131,13 +120,13 @@ if __name__ == "__main__":
                 args.world_size = 1
                 common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
                 p = None
-                probabilities_for_train_set = utils.convert_q_to_dict(args, completed_q, p, event)
+                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
                 args.world_size = torch.cuda.device_count()
             else:
                 p = mp.spawn(common_operations.call_specific_approach,
                              args=(args, current_batch, completed_q, event, rolling_models),
                              nprocs=args.world_size, join=False)
-                probabilities_for_train_set = utils.convert_q_to_dict(args, completed_q, p, event)
+                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
             probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
 
         # Accumulate all unknown samples
@@ -158,7 +147,7 @@ if __name__ == "__main__":
             args.world_size = 1
             common_operations.call_specific_approach(0, args, accumulated_samples, completed_q, event)
             p=None
-            models = utils.convert_q_to_dict(args, completed_q, p, event)
+            models = common_operations.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
             args.world_size = min(no_of_classes_to_enroll, torch.cuda.device_count())
@@ -166,7 +155,7 @@ if __name__ == "__main__":
                          args=(args, accumulated_samples, completed_q, event),
                          nprocs=args.world_size,
                          join=False)
-            models = utils.convert_q_to_dict(args, completed_q, p, event)
+            models = common_operations.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         rolling_models.update(models)
 
@@ -180,13 +169,13 @@ if __name__ == "__main__":
             args.world_size = 1
             common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
             p = None
-            results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
+            results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
             args.world_size = torch.cuda.device_count()
         else:
             p = mp.spawn(common_operations.call_specific_approach,
                          args=(args, current_batch, completed_q, event, rolling_models),
                          nprocs=args.world_size, join=False)
-            results_for_all_batches[batch] = utils.convert_q_to_dict(args, completed_q, p, event)
+            results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
         results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
 
     dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \

@@ -1,9 +1,10 @@
 import csv
 import random
-import utils
+from utile.tools import logger
 import functools
 import itertools
 import numpy as np
+
 
 def protocol(func):
     @functools.wraps(func)
@@ -24,7 +25,7 @@ def protocol(func):
         return batch_nos, images, classes
     return wrapper
 
-@utils.time_recorder
+@logger.time_recorder
 @protocol
 def basic_protocol(initial_no_of_classes=200,
                    new_classes_per_batch=10,
@@ -57,8 +58,7 @@ def basic_protocol(initial_no_of_classes=200,
     return all_batches
 
 
-
-@utils.time_recorder
+@logger.time_recorder
 @protocol
 def open_world_protocol(initial_no_of_classes=50,
                         new_classes_per_batch=10,
@@ -118,8 +118,7 @@ def open_world_protocol(initial_no_of_classes=50,
     return all_batches
 
 
-
-@utils.time_recorder
+@logger.time_recorder
 @protocol
 def ImageNetIncremental(initial_no_of_classes=50,
                         new_classes_per_batch=5, #10 #25
@@ -150,7 +149,7 @@ def ImageNetIncremental(initial_no_of_classes=50,
     return all_batches
 
 
-@utils.time_recorder
+@logger.time_recorder
 @protocol
 def OpenWorldValidation(classes=[],
                         all_images=[]):

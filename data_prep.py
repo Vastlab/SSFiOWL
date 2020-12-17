@@ -38,6 +38,8 @@ def prep_single_chunk(args, cls_to_process):
 
 @utils.time_recorder
 def prep_all_features_parallel(args, all_class_names=None):
+    for f in args.feature_files:
+        assert Path(f).is_file(),f"File {f} does not exist"
     if all_class_names is None:
         with h5py.File(args.feature_files[0], "r") as hf:
             all_class_names = sorted(list(hf.keys()))

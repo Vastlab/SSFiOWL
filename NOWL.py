@@ -32,7 +32,7 @@ def command_line_options():
 
     parser = data_prep.params(parser)
 
-    parser.add_argument('--accumulation_algo', default='mimic_incremental', type=str,
+    parser.add_argument('--accumulation_algo', default='learn_new_unknowns', type=str,
                         help='Name of the accumulation algorithm to use\ndefault: %(default)s',
                         choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
     parser.add_argument("--unknowness_threshold", type=float, default=0.5,

@@ -1,8 +1,9 @@
 import argparse
 import pickle
 import pathlib
-import numpy as np
 import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
+import numpy as np
 import torch.multiprocessing as mp
 import protocols
 import data_prep

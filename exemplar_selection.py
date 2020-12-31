@@ -16,7 +16,7 @@ def random_selector(features, rolling_models,no_of_exemplars=None):
         torch.manual_seed(0)
         random.seed(0)
         np.random.seed(0)
-        ev_key_name = list(set(rolling_models[cls_name].keys())-{'weibulls'})[0]
+        ev_key_name = list(set(rolling_models[cls_name].keys())-{'weibulls'}-{'extreme_vectors_indexes'})[0]
         ind_of_interest = torch.randint(rolling_models[cls_name][ev_key_name].shape[0],
                                         (min(no_of_exemplars,
                                              rolling_models[cls_name][ev_key_name].shape[0]),

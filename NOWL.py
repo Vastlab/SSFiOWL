@@ -60,7 +60,7 @@ def command_line_options():
                                             usage=argparse.SUPPRESS,
                                             description = "This script runs the open world experiments from the paper"
                                                           "i.e. Table 3")
-    parser = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
+    parser, _ = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
     args = parser.parse_args()
     return args
 
@@ -181,7 +181,10 @@ if __name__ == "__main__":
 
     dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \
                f"_NewClassesPerBatch-{args.new_classes_per_batch}"
-    file_name = f"{args.distance_metric}_EVMParams-{args.tailsize}_{args.cover_threshold}_{args.distance_multiplier}"
+    if args.OOD_Algo == 'EVM':
+        file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.cover_threshold}_{args.distance_multiplier}"
+    else:
+        file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.distance_multiplier}"
     if args.all_samples:
         file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/all_samples/")
     else:

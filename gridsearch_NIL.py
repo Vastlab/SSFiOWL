@@ -114,6 +114,19 @@ if __name__ == "__main__":
 
         # Run validation on each batch for each parameter combination
         results_to_read = []
+
+        print(f"Preparing validation data")
+        validation_batch = {}
+        for batch in set(batch_nos.tolist()):
+            validation_batch[batch]={}
+            for cls in sorted(set(val_classes[val_batch_nos == batch].tolist())):
+                indx_of_interest = \
+                    np.where(np.in1d(features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes == cls)]))[
+                        0]
+                indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
+                indx_of_interest = indx_of_interest[:, None].expand(-1, features[cls]['features'].shape[1])
+                validation_batch[batch][cls] = features[cls]['features'].gather(0, indx_of_interest)
+
         for param_combination in rolling_models[0].keys():
             models={}
             results_for_all_batches = {}
@@ -121,27 +134,19 @@ if __name__ == "__main__":
             batch_nos_to_plot = []
             for batch in set(batch_nos.tolist()):
                 models.update(rolling_models[batch][param_combination])
-                print(f"Preparing validation data for batch {batch}")
-                validation_batch = {}
-                for cls in sorted(set(val_classes[val_batch_nos == batch].tolist())):
-                    indx_of_interest = \
-                    np.where(np.in1d(features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes == cls)]))[0]
-                    indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
-                    indx_of_interest = indx_of_interest[:, None].expand(-1, features[cls]['features'].shape[1])
-                    validation_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
-                print(f"Running validation for batch {batch}")
 
+                print(f"Running validation for combination {param_combination} on batch {batch}")
                 event.clear()
-                if args.no_multiprocessing or len(validation_batch.keys())==1:
+                if args.no_multiprocessing or len(validation_batch[batch].keys())==1:
                     args.world_size = 1
-                    common_operations.call_specific_approach(0, args, validation_batch, completed_q, event, models)
+                    common_operations.call_specific_approach(0, args, validation_batch[batch], completed_q, event, models)
                     p = None
                     results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
                     args.world_size = torch.cuda.device_count()
                 else:
-                    args.world_size = min(len(validation_batch.keys()), torch.cuda.device_count())
+                    args.world_size = min(len(validation_batch[batch].keys()), torch.cuda.device_count())
                     p = mp.spawn(common_operations.call_specific_approach,
-                                 args=(args, validation_batch, completed_q, event, models),
+                                 args=(args, validation_batch[batch], completed_q, event, models),
                                  nprocs=args.world_size, join=False)
                     results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
                 results_for_all_batches[batch]['classes_order'] = sorted(models.keys())

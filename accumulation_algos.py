@@ -111,26 +111,26 @@ class OWL_on_a_budget():
                 accumulated_samples[cls] = operating_batch[cls][unknowness_scores[cls]]
 
         # Create a single tensor from all unknowns
-        features = []
+        unknown_samples_features = []
         gt = []
         for cls in accumulated_samples:
-            features.append(accumulated_samples[cls])
+            unknown_samples_features.append(accumulated_samples[cls])
             gt.extend([cls]*accumulated_samples[cls].shape[0])
-        features = torch.cat(features)
-        features = features.type(torch.FloatTensor)
+        unknown_samples_features = torch.cat(unknown_samples_features)
+        unknown_samples_features = unknown_samples_features.type(torch.FloatTensor)
         gt = np.array(gt)
 
         # Perform clustering on all unknown samples
         Clustering_Algo = getattr(clustering, args.Accumulator_clustering_Algo)
-        centroids, assignments = Clustering_Algo(features, K=min(features.shape[0], 100), verbose=False,
-                                                 distance_metric=args.distance_metric)
+        centroids, assignments = Clustering_Algo(unknown_samples_features, K=min(unknown_samples_features.shape[0], 100),
+                                                 verbose=False, distance_metric=args.distance_metric)
         # From the above clusters select the candidate samples that will be used for labeling
         annotation_candidate_indxs = self.__select_samples_for_labeling__(assignments, budget)
         # Hold the GT labels for the annotated samples.
-        self.stored_labels_features.extend(features[annotation_candidate_indxs,:].tolist())
+        self.stored_labels_features.extend(unknown_samples_features[annotation_candidate_indxs,:].tolist())
         self.stored_labels_gt.extend(gt[annotation_candidate_indxs].tolist())
         # Using the annotations assign pseudo labels to clusters.
-        pseudo_label_dict = self.__assign_pseudo_labels_to_clusters__(assignments, features)
+        pseudo_label_dict = self.__assign_pseudo_labels_to_clusters__(assignments, unknown_samples_features)
         # Return pseudo_label_dict
         return pseudo_label_dict
 

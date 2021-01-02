@@ -35,7 +35,8 @@ def command_line_options():
 
     parser.add_argument('--accumulation_algo', default='learn_new_unknowns', type=str,
                         help='Name of the accumulation algorithm to use\ndefault: %(default)s',
-                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
+                        choices=['mimic_incremental','learn_new_unknowns',
+                                 'update_existing_learn_new','OWL_on_a_budget'])
     parser.add_argument("--unknowness_threshold", type=float, default=0.5,
                         help="unknowness probability score above which a sample is considered as unknown\ndefault: %(default)s")
 
@@ -52,6 +53,14 @@ def command_line_options():
                                  help="Samples belonging to unknown classes in every incremental batch\ndefault: %(default)s")
     protocol_params.add_argument("--initial_no_of_samples", type=int, default=15000,
                                  help="Number of samples in the first/initialization batch\ndefault: %(default)s")
+
+    parser.add_argument('--Accumulator_clustering_Algo', default='finch', type=str,
+                        choices=['KMeans','dbscan','finch'],
+                        help='Clustering algorithm used for the accumulation algorithm default: %(default)s')
+    parser.add_argument("--annotation_budget", type=int, default=0,
+                        help="Annotation Budget\ndefault: %(default)s")
+    parser.add_argument("--initialization_batch_annotation_budget", type=int, default=None,
+                        help="Initialization Batch Annotation Budget\ndefault: %(default)s")
 
     known_args, unknown_args = parser.parse_known_args()
 
@@ -76,16 +85,17 @@ def get_current_batch(classes, features, batch_nos, batch, images, classes_to_fe
         current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
     return current_batch
 
-def get_learning_samples(args, current_batch,rolling_models, probabilities_for_train_set):
-    accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
-    return accumulation_algo(args, current_batch,rolling_models, probabilities_for_train_set)
-
 if __name__ == "__main__":
     mp.set_start_method('forkserver', force=True)
     args = command_line_options()
     args.world_size = torch.cuda.device_count()
     if args.world_size==1:
         args.no_multiprocessing = True
+
+    if args.accumulation_algo == "OWL_on_a_budget":
+        accumulation_algo = accumulation_algos.OWL_on_a_budget()
+    else:
+        accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
 
     # Get the operational protocols
     batch_nos, images, classes = protocols.open_world_protocol(initial_no_of_classes=args.initialization_classes,
@@ -131,7 +141,7 @@ if __name__ == "__main__":
             probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
 
         # Accumulate all unknown samples
-        accumulated_samples = get_learning_samples(args, current_batch, rolling_models, probabilities_for_train_set)
+        accumulated_samples = accumulation_algo(args, current_batch, rolling_models, probabilities_for_train_set)
 
         # Add exemplars
         exemplars_to_add={}

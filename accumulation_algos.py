@@ -93,6 +93,8 @@ class OWL_on_a_budget():
         per_sample_budget_ratio = budget/assignments.shape[0]
         for cluster_no in set(assignments.tolist())-{-1}:
             indxs_of_interest = all_indices[assignments==cluster_no]
+            if indxs_of_interest.shape[0]<=5:
+                continue
             budget_for_current_cluster = max(round(indxs_of_interest.shape[0] * per_sample_budget_ratio),1)
             i = indxs_of_interest[torch.randperm(indxs_of_interest.numel())[:budget_for_current_cluster]]
             boolean_flags[i] = True
@@ -151,6 +153,7 @@ class OWL_on_a_budget():
         unknown_samples_features = unknown_samples_features.type(torch.FloatTensor)
         gt = np.array(gt)
 
+        assert unknown_samples_features.shape[0]!=0, "No unknown samples detected"
         # Perform clustering on all unknown samples
         Clustering_Algo = getattr(clustering, args.Accumulator_clustering_Algo)
         centroids, assignments = Clustering_Algo(unknown_samples_features, K=min(unknown_samples_features.shape[0], 100),

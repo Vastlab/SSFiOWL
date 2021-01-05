@@ -62,9 +62,8 @@ if __name__ == "__main__":
     if args.world_size==1:
         args.no_multiprocessing = True
     if args.debug:
-        logger = utilslogger.setup_logger(level='DEBUG', output=args.output_dir)
-    else:
-        logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
+        args.verbose = 0
+    logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
     all_new_classes_per_batch = args.new_classes_per_batch
     results=[]
     for exp_no, new_classes_per_batch in enumerate(all_new_classes_per_batch):

@@ -1,5 +1,8 @@
 import torch
 import numpy as np
+from utile.tools import logger as utilslogger
+
+logger = utilslogger.get_logger()
 
 def calculate_CCA(results_for_all_batches):
     CCA = []
@@ -13,8 +16,8 @@ def calculate_CCA(results_for_all_batches):
             max_indx = torch.argmax(scores, dim=1)
             correct += sum(scores_order[max_indx] == test_cls)
         CCA.append((correct / total) * 100.)
-        print(f"Accuracy on Batch {batch_no} : {CCA[-1]}")
-    print(f"Average Closed Set Classification Accuracy : {np.mean(CCA)}")
+        logger.critical(f"Accuracy on Batch {batch_no} : {CCA[-1]}")
+    logger.critical(f"Average Closed Set Classification Accuracy : {np.mean(CCA)}")
     return CCA
 
 def calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=0.5):
@@ -48,6 +51,6 @@ def calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=0.5):
                 OCA_correct += sum(temp == test_cls)
         UDA.append((UDA_correct / max(UDA_total, 1)) * 100.)
         OCA.append((OCA_correct / total) * 100.)
-        print(f"Unknowness detection accuracy on Batch {batch_no} : {UDA[-1]}  OCA {OCA[-1]}")
-    print(f"Average Unknowness Accuracy : {np.mean(UDA)} OCA {np.mean(OCA)}")
+        logger.critical(f"Unknowness detection accuracy on Batch {batch_no} : {UDA[-1]}  OCA {OCA[-1]}")
+    logger.critical(f"Average Unknowness Accuracy : {np.mean(UDA)} OCA {np.mean(OCA)}")
     return UDA, OCA, batches

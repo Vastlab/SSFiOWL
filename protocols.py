@@ -4,12 +4,11 @@ from utile.tools import logger as utilslogger
 import functools
 import itertools
 import numpy as np
-
+logger = utilslogger.get_logger()
 
 def protocol(func):
     @functools.wraps(func)
     def wrapper(*args, files_to_add = ['imagenet_1000_train'], **kwargs):
-        # files_to_add=['imagenet_1000_train.csv','imagenet_1000_val.csv','imagenet_360.csv']
         all_images = []
         for file_name in files_to_add:
             with open(f"/home/jschwan2/simclr-converter/{file_name}.csv", "r") as f:
@@ -97,9 +96,6 @@ def open_world_protocol(initial_no_of_classes=50,
         unknown_classes = np.in1d(org_class_names, unknown_classes_of_interest)
         unknown_classes = np.arange(org_class_names.shape[0])[unknown_classes]
         known_images_to_add = np.random.choice(known_classes, no_of_known_images, replace=False)
-        print(f"No of known classes {known_classes_of_interest.shape} No of unknown classes {unknown_classes_of_interest.shape}")
-        print(f"images_needed_in_batch-no_of_known_images {images_needed_in_batch-no_of_known_images}")
-        print(f"unknown_classes {unknown_classes.shape} {images_needed_in_batch-no_of_known_images}")
         unknown_images_to_add = np.random.choice(unknown_classes, images_needed_in_batch-no_of_known_images, replace=False)
 
         knowns = list(itertools.zip_longest([batch_no+1],
@@ -112,9 +108,9 @@ def open_world_protocol(initial_no_of_classes=50,
         all_batches.extend(knowns)
         if batch_no>=0:
             all_batches.extend(unknowns)
-        print(f"Created batch no {batch_no+1} with {len(knowns)} number of knowns samples and {len(unknowns)} number of unknowns samples and ")
+        logger.info(f"Created batch no {batch_no+1} with {len(knowns)} number of knowns samples and "
+                    f"{len(unknowns)} number of unknowns samples")
         batch_no+=1
-    print(f"all_batches {len(all_batches)}")
     return all_batches
 
 
@@ -130,7 +126,6 @@ def ImageNetIncremental(initial_no_of_classes=50,
 
     np.random.seed(1993)
     class_names = np.random.choice(class_names, total_classes, replace=False)
-    logger = utilslogger.get_logger()
 
     for batch_no, no_classes_in_current_batch in enumerate(range(initial_no_of_classes,
                                                                  len(class_names)+1,

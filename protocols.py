@@ -1,6 +1,6 @@
 import csv
 import random
-from utile.tools import logger
+from utile.tools import logger as utilslogger
 import functools
 import itertools
 import numpy as np
@@ -25,7 +25,7 @@ def protocol(func):
         return batch_nos, images, classes
     return wrapper
 
-@logger.time_recorder
+@utilslogger.time_recorder
 @protocol
 def basic_protocol(initial_no_of_classes=200,
                    new_classes_per_batch=10,
@@ -58,7 +58,7 @@ def basic_protocol(initial_no_of_classes=200,
     return all_batches
 
 
-@logger.time_recorder
+@utilslogger.time_recorder
 @protocol
 def open_world_protocol(initial_no_of_classes=50,
                         new_classes_per_batch=10,
@@ -118,7 +118,7 @@ def open_world_protocol(initial_no_of_classes=50,
     return all_batches
 
 
-@logger.time_recorder
+@utilslogger.time_recorder
 @protocol
 def ImageNetIncremental(initial_no_of_classes=50,
                         new_classes_per_batch=5, #10 #25
@@ -127,13 +127,10 @@ def ImageNetIncremental(initial_no_of_classes=50,
     all_batches=[]
     class_names, image_names = zip(*all_images)
     class_names = sorted(list(set(class_names)))
-    # class_names = list(zip(range(len(class_names)), class_names))
 
     np.random.seed(1993)
     class_names = np.random.choice(class_names, total_classes, replace=False)
-    
-    # sno, class_names = zip(*class_names)
-    # print(f"class_names {sno}")
+    logger = utilslogger.get_logger()
 
     for batch_no, no_classes_in_current_batch in enumerate(range(initial_no_of_classes,
                                                                  len(class_names)+1,
@@ -144,12 +141,11 @@ def ImageNetIncremental(initial_no_of_classes=50,
             if cls_name in classes_of_interest:
                 images_of_interest.append((batch_no, image, cls_name))
         all_batches.extend(images_of_interest)
-        print(f"Created batch no {batch_no} with {len(images_of_interest)} number of samples")
-    # print(f"all_batches {all_batches}")
+        logger.info(f"Created batch no {batch_no} with {len(images_of_interest)} number of samples")
     return all_batches
 
 
-@logger.time_recorder
+@utilslogger.time_recorder
 @protocol
 def OpenWorldValidation(classes=[],
                         all_images=[]):
@@ -162,32 +158,6 @@ def OpenWorldValidation(classes=[],
 
 
 if __name__ == "__main__":
-    """
-    initial_no_of_classes=(50,500)
-    total_no_of_classes = (100, 1000)
-    no_of_batches=(5,10,25)
-    for initial, total in zip(initial_no_of_classes,total_no_of_classes):
-        for batches in no_of_batches:
-            no_of_new_classes_in_batch = (total-initial)//batches
-            batch_nos, images, classes = protocols.ImageNetIncremental(initial_no_of_classes=initial,
-                                                                       new_classes_per_batch=no_of_new_classes_in_batch,
-                                                                       total_classes=total)
-            val_batch_nos, val_images, val_classes = protocols.ImageNetIncremental(files_to_add = ['imagenet_1000_val'],
-                                                                                   initial_no_of_classes=initial,
-                                                                                   new_classes_per_batch=no_of_new_classes_in_batch,
-                                                                                   total_classes=total)
-    """
-    # open_world_protocol()
-    # open_world_protocol(initial_no_of_classes=50,
-    #                     new_classes_per_batch=10,
-    #                     initial_batch_size=15000,
-    #                     batch_size=10000,
-    #                     unknowns_percentage=0.5,
-    #                     total_classes=100)
-    # ImageNetIncremental(files_to_add=['imagenet_1000_val'],
-    #                     initial_no_of_classes=50,
-    #                     new_classes_per_batch=10,
-    #                     total_classes=100)
     b,i,c=ImageNetIncremental(files_to_add=['imagenet_1000_val'],
                         initial_no_of_classes=5,
                         new_classes_per_batch=1,

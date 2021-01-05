@@ -11,12 +11,14 @@ import data_prep
 import common_operations
 import viz
 from utile import opensetAlgos
+from utile.tools import logger as utilslogger
 
 
 def command_line_options():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
                                      add_help=False, usage=argparse.SUPPRESS)
 
+    parser.add_argument('-v', '--verbose', help="To decrease verbosity increase", action='count', default=0)
     parser.add_argument("--debug", action="store_true", default=False, help="debugging flag\ndefault: %(default)s")
     parser.add_argument("--no_multiprocessing", action="store_true", default=False,
                         help="Use for debugging or running on single GPU\ndefault: %(default)s")
@@ -59,7 +61,9 @@ if __name__ == "__main__":
     args.world_size = torch.cuda.device_count()
     if args.world_size==1:
         args.no_multiprocessing = True
-
+    if args.debug:
+        args.verbose = 0
+    logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
     all_new_classes_per_batch = args.new_classes_per_batch
     results=[]
     for exp_no, new_classes_per_batch in enumerate(all_new_classes_per_batch):
@@ -87,7 +91,7 @@ if __name__ == "__main__":
         results_for_all_batches = {}
         completed_q = mp.Queue()
         for batch in set(batch_nos.tolist()):
-            print(f"Preparing training batch {batch}")
+            logger.info(f"Preparing training batch {batch}")
             current_batch = {}
             # Add exemplars
             if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
@@ -101,7 +105,7 @@ if __name__ == "__main__":
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
                 current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
-            print(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
+            logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
             event.clear()
             no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist())-set(rolling_models.keys()))
@@ -118,7 +122,7 @@ if __name__ == "__main__":
                              join=False)
                 models = common_operations.convert_q_to_dict(args, completed_q, p, event)
 
-            print(f"Preparing validation data")
+            logger.info(f"Preparing validation data")
             rolling_models.update(models)
             current_batch = {}
             for cls in sorted(set(val_classes[val_batch_nos==batch].tolist())):
@@ -126,7 +130,7 @@ if __name__ == "__main__":
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, val_features[cls]['features'].shape[1])
                 current_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
-            print(f"Running on validation data")
+            logger.info(f"Running on validation data")
 
             event.clear()
             no_of_classes_to_process = len(set(val_classes[val_batch_nos==batch].tolist()))
@@ -156,7 +160,7 @@ if __name__ == "__main__":
         else:
             file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/no_of_exemplars_{args.no_of_exemplars}/")
         file_path.mkdir(parents=True, exist_ok=True)
-        print(f"Saving to path {file_path}")
+        logger.critical(f"Saving to path {file_path}")
         pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
 
         acc_to_plot=[]
@@ -173,9 +177,9 @@ if __name__ == "__main__":
             acc = (correct/total)*100.
             acc_to_plot.append(acc)
             batch_nos_to_plot.append(scores_order.shape[0])
-            print(f"Accuracy on Batch {batch_no} : {acc:.2f}")
+            logger.critical(f"Accuracy on Batch {batch_no} : {acc:.2f}")
 
-        print(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
+        logger.critical(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
         results.append(f"{np.mean(acc_to_plot):.2f}")
     if len(all_new_classes_per_batch)>1:
-        print(' & '.join(results))
+        logger.critical(' & '.join(results))

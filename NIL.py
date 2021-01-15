@@ -3,7 +3,6 @@ import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 import numpy as np
 import torch.multiprocessing as mp
-import pickle
 import pathlib
 import protocols
 import exemplar_selection
@@ -149,19 +148,10 @@ if __name__ == "__main__":
             results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
 
 
-        dir_name = f"Incremental_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \
-                   f"_NewClassesPerBatch-{args.new_classes_per_batch}"
-        if args.OOD_Algo == 'EVM':
-            file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.cover_threshold}_{args.distance_multiplier}"
-        else:
-            file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.distance_multiplier}"
-        if args.all_samples:
-            file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/all_samples/")
-        else:
-            file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/no_of_exemplars_{args.no_of_exemplars}/")
-        file_path.mkdir(parents=True, exist_ok=True)
-        logger.critical(f"Saving to path {file_path}")
-        pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
+        args.output_dir=pathlib.Path(args.output_dir)
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        logger.critical(f"Results for {new_classes_per_batch} new classes/batch DM {args.distance_multiplier}"
+                        f" CT {args.cover_threshold}")
 
         acc_to_plot=[]
         batch_nos_to_plot = []

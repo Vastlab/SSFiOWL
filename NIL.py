@@ -66,8 +66,11 @@ if __name__ == "__main__":
     logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
     all_new_classes_per_batch = args.new_classes_per_batch
 
-    org_dm, org_ct = args.distance_multiplier, args.cover_threshold
     all_grid_search_results = []
+    per_class_best_results = []
+    tabular_results = []
+
+    org_dm, org_ct = args.distance_multiplier, args.cover_threshold
 
     for exp_no, new_classes_per_batch in enumerate(all_new_classes_per_batch):
         args.new_classes_per_batch = new_classes_per_batch
@@ -88,11 +91,15 @@ if __name__ == "__main__":
             args.feature_files = args.validation_feature_files
             val_features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(val_classes.tolist())))
 
-        for dm, ct in itertools.product(org_dm, org_ct):
+        if len(all_new_classes_per_batch) == len(org_dm) == len(org_ct):
+            combinations_to_try = ((org_dm[exp_no], org_ct[exp_no]),)
+        else:
+            combinations_to_try = itertools.product(org_dm, org_ct)
+
+        event = mp.Event()
+        for dm, ct in combinations_to_try:
             args.distance_multiplier, args.cover_threshold = [dm], [ct]
 
-            # Convert Each Batch into a dictionary where keys are class names
-            event = mp.Event()
             rolling_models = {}
             results_for_all_batches = {}
             completed_q = mp.Queue()
@@ -178,8 +185,14 @@ if __name__ == "__main__":
 
             logger.critical(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
 
-            all_grid_search_results.append((f"{new_classes_per_batch:03d} {np.mean(acc_to_plot):.2f} "
-                                            f"{args.distance_multiplier[0]} {args.cover_threshold[0]}"))
-        logger.critical('\n'.join(all_grid_search_results))
-    all_grid_search_results = sorted(all_grid_search_results)
-    logger.critical("\n".join(all_grid_search_results))
+            all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(acc_to_plot):06.2f}",
+                                            f"{args.distance_multiplier[0]}", f"{args.cover_threshold[0]}"))
+
+        all_grid_search_results = sorted(all_grid_search_results)
+        per_class_best_results.append(' '.join(all_grid_search_results[-1]))
+        tabular_results.append(all_grid_search_results[-1][1])
+        logger.critical("Grid Search Results:\n"+'\n'.join((' '.join(_) for _ in all_grid_search_results)))
+    logger.critical("Best Results:\n"+'\n'.join(per_class_best_results))
+
+    if len(all_new_classes_per_batch)>1:
+        logger.critical(' & '.join(tabular_results))

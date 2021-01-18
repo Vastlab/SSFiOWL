@@ -12,11 +12,13 @@ import exemplar_selection
 import eval
 import accumulation_algos
 from utile import opensetAlgos
+from utile.tools import logger as utilslogger
 
 def command_line_options():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
                                      add_help=False, usage=argparse.SUPPRESS)
 
+    parser.add_argument('-v', '--verbose', help="To decrease verbosity increase", action='count', default=0)
     parser.add_argument("--debug", action="store_true", default=False, help="debugging flag\ndefault: %(default)s")
     parser.add_argument("--no_multiprocessing", action="store_true", default=False,
                         help="Use for debugging or running on single GPU\ndefault: %(default)s")
@@ -76,16 +78,17 @@ def get_current_batch(classes, features, batch_nos, batch, images, classes_to_fe
         current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
     return current_batch
 
-def get_learning_samples(args, current_batch,rolling_models, probabilities_for_train_set):
-    accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
-    return accumulation_algo(args, current_batch,rolling_models, probabilities_for_train_set)
-
 if __name__ == "__main__":
     mp.set_start_method('forkserver', force=True)
     args = command_line_options()
     args.world_size = torch.cuda.device_count()
     if args.world_size==1:
         args.no_multiprocessing = True
+    if args.debug:
+        args.verbose = 0
+    logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
+
+    accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
 
     # Get the operational protocols
     batch_nos, images, classes = protocols.open_world_protocol(initial_no_of_classes=args.initialization_classes,
@@ -109,13 +112,13 @@ if __name__ == "__main__":
     completed_q = mp.Queue()
     list_of_all_batch_nos = set(batch_nos.tolist())
     for batch in list_of_all_batch_nos:
-        print(f"Preparing batch {batch} from training data (initialization/operational)")
+        logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
 
-        print(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
+        logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
         probabilities_for_train_set={}
         if len(rolling_models.keys())>0:
-            print(f"Getting probabilities for the current operational batch")
+            logger.info(f"Getting probabilities for the current operational batch")
             event.clear()
             if args.no_multiprocessing:
                 args.world_size = 1
@@ -131,7 +134,7 @@ if __name__ == "__main__":
             probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
 
         # Accumulate all unknown samples
-        accumulated_samples = get_learning_samples(args, current_batch, rolling_models, probabilities_for_train_set)
+        accumulated_samples = accumulation_algo(args, current_batch, rolling_models, probabilities_for_train_set)
 
         # Add exemplars
         exemplars_to_add={}
@@ -142,7 +145,7 @@ if __name__ == "__main__":
 
         # Run enrollment for unknown samples probabilities_for_train_set
         no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
-        print(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
+        logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
         event.clear()
         if args.no_multiprocessing or  no_of_classes_to_enroll== 1:
             args.world_size = 1
@@ -160,11 +163,11 @@ if __name__ == "__main__":
             args.world_size = torch.cuda.device_count()
         rolling_models.update(models)
 
-        print(f"Preparing validation data")
+        logger.info(f"Preparing validation data")
         current_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
                                           classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
-        print(f"Running on validation data")
+        logger.info(f"Running on validation data")
         event.clear()
         if args.no_multiprocessing:
             args.world_size = 1
@@ -190,9 +193,9 @@ if __name__ == "__main__":
     else:
         file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/no_of_exemplars_{args.no_of_exemplars}/")
     file_path.mkdir(parents=True, exist_ok=True)
-    print(f"Saving to path {file_path}")
+    logger.critical(f"Saving to path {file_path}")
     pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
     CCA = eval.calculate_CCA(results_for_all_batches)
     UDA, OCA, _ = eval.calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=args.unknowness_threshold)
-    print(f"For Tabeling")
-    print(f"{np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")
+    logger.critical(f"For Tabeling")
+    logger.critical(f"{np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")

@@ -1,4 +1,4 @@
-from utile.tools import logger
+from vast.tools import logger
 import h5py
 import torch
 import torch.multiprocessing as mp

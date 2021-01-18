@@ -11,8 +11,8 @@ import common_operations
 import exemplar_selection
 import eval
 import accumulation_algos
-from utile import opensetAlgos
-from utile.tools import logger as utilslogger
+from vast import opensetAlgos
+from vast.tools import logger as vastlogger
 
 def command_line_options():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         args.no_multiprocessing = True
     if args.debug:
         args.verbose = 0
-    logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
+    logger = vastlogger.setup_logger(level=args.verbose, output=args.output_dir)
 
     accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
 

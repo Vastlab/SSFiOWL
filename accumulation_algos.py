@@ -1,6 +1,7 @@
 import torch
-from utile.tools import logger
 
+from vast.tools import logger as vastlogger
+logger = vastlogger.get_logger()
 
 def find_unknowness_probabilities(probabilities_for_train_set, unknowness_threshold=None):
     unknowness_scores = {}
@@ -11,7 +12,7 @@ def find_unknowness_probabilities(probabilities_for_train_set, unknowness_thresh
     return unknowness_scores
 
 
-@logger.time_recorder
+@vastlogger.time_recorder
 def mimic_incremental(args, current_batch,rolling_models, probabilities_for_train_set):
     accumulated_samples = {}
     for c in current_batch:
@@ -20,8 +21,8 @@ def mimic_incremental(args, current_batch,rolling_models, probabilities_for_trai
     return accumulated_samples
 
 
-@logger.time_recorder
-def learn_new_unknowns(args, operating_batch,rolling_models, probabilities_for_train_set):
+@vastlogger.time_recorder
+def learn_new_unknowns(args, operating_batch, rolling_models, probabilities_for_train_set):
     if len(rolling_models.keys())==0:
         return operating_batch
     unknowness_scores = find_unknowness_probabilities(probabilities_for_train_set,

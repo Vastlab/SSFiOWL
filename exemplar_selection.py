@@ -1,13 +1,13 @@
 import torch
 import random
 import numpy as np
-from utile.tools import logger as utilslogger
+from vast.tools import logger as vastlogger
 torch.manual_seed(0)
 random.seed(0)
 np.random.seed(0)
 
 def random_selector(features, rolling_models,no_of_exemplars=None):
-    logger = utilslogger.get_logger()
+    logger = vastlogger.get_logger()
     logger.info(f" Randomly Selecting extreme vectors and adding them to exemplars ".center(90, '#'))
     current_batch_size = 0
     exemplars_to_return = {}

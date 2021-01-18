@@ -10,12 +10,12 @@ Please use the following BibTex to cite this work.
 }
 ```
 ###### Dependencies
-This repo is dependent on the repo https://github.com/Vastlab/utile that contains some useful functionality for various projects at VastLab.
+This repo is dependent on the repo https://github.com/Vastlab/vast that contains some useful functionality for various projects at VastLab.
 Please ensure this repo is cloned and in your path.
 
 ###### Feature Extraction
 Since none of our approaches perform any backpropagation, we pre-extract features from the self supervised networks and use them for all our experiments.
-For extracting the features please use the script provided at https://github.com/Vastlab/utile/blob/master/tools/FeatureExtraction.py 
+For extracting the features please use the script provided at https://github.com/Vastlab/vast/blob/main/tools/FeatureExtraction.py 
 
 ###### Non-Backpropagating Incremental Learning (NIL)
 Sample command used to run incremental learning experiments using the NIL approach

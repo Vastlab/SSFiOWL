@@ -1,13 +1,13 @@
 import os
-import utile
+import vast
 import torch
-from utile.tools import logger as utilslogger
+from vast.tools import logger as vastlogger
 
 def convert_q_to_dict(args, completed_q, p=None, event=None):
     all_data = {}
     nb_ended_workers = 0
     k=0
-    logger = utilslogger.get_logger()
+    logger = vastlogger.get_logger()
     while nb_ended_workers < args.world_size:
         result = completed_q.get()
         k+=1
@@ -38,10 +38,10 @@ def call_specific_approach(gpu, args, features_all_classes, completed_q, event, 
         )
         torch.cuda.set_device(gpu)
         os.environ["CUDA_VISIBLE_DEVICES"] = f"{gpu}"
-        logger = utilslogger.get_logger(level=args.verbose, output=args.output_dir,
+        logger = vastlogger.get_logger(level=args.verbose, output=args.output_dir,
                                         distributed_rank=gpu, world_size=args.world_size)
     else:
-        logger = utilslogger.get_logger()
+        logger = vastlogger.get_logger()
     logger.debug(f"Started process")
     class_names = list(features_all_classes.keys())
     exemplar_classes = []
@@ -55,9 +55,9 @@ def call_specific_approach(gpu, args, features_all_classes, completed_q, event, 
     pos_classes_to_process = class_names[gpu * div + min(gpu, mod):(gpu + 1) * div + min(gpu + 1, mod)]
     logger.debug(f"Processing classes {pos_classes_to_process}")
     if models is None:
-        OOD_Method = getattr(utile.opensetAlgos, args.OOD_Algo + '_Training')
+        OOD_Method = getattr(vast.opensetAlgos, args.OOD_Algo + '_Training')
     else:
-        OOD_Method = getattr(utile.opensetAlgos, args.OOD_Algo + '_Inference')
+        OOD_Method = getattr(vast.opensetAlgos, args.OOD_Algo + '_Inference')
     algorithm_results_iterator = OOD_Method(pos_classes_to_process, features_all_classes, args, gpu, models)
     for current_class_output in algorithm_results_iterator:
         completed_q.put(current_class_output)

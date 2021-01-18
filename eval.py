@@ -1,8 +1,8 @@
 import torch
 import numpy as np
-from utile.tools import logger as utilslogger
+from vast.tools import logger as vastlogger
 
-logger = utilslogger.get_logger()
+logger = vastlogger.get_logger()
 
 def calculate_CCA(results_for_all_batches):
     CCA = []

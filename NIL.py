@@ -10,8 +10,8 @@ import exemplar_selection
 import data_prep
 import common_operations
 import viz
-from utile import opensetAlgos
-from utile.tools import logger as utilslogger
+from vast import opensetAlgos
+from vast.tools import logger as vastlogger
 
 
 def command_line_options():
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         args.no_multiprocessing = True
     if args.debug:
         args.verbose = 0
-    logger = utilslogger.setup_logger(level=args.verbose, output=args.output_dir)
+    logger = vastlogger.setup_logger(level=args.verbose, output=args.output_dir)
     all_new_classes_per_batch = args.new_classes_per_batch
 
     all_grid_search_results = []

@@ -105,10 +105,12 @@ def open_world_protocol(initial_no_of_classes=50,
         knowns = list(itertools.zip_longest([batch_no+1],
                                        image_names[known_images_to_add].tolist(),
                                        org_class_names[known_images_to_add].tolist(),fillvalue=batch_no+1))
-        unknowns = list(itertools.zip_longest([batch_no+1],
-                                         image_names[unknown_images_to_add].tolist(),
-                                         org_class_names[unknown_images_to_add].tolist(),fillvalue=batch_no+1))
-
+        unknowns = []
+        if len(image_names[unknown_images_to_add].tolist())>0:
+            unknowns = list(itertools.zip_longest(
+                                [batch_no+1],
+                                image_names[unknown_images_to_add].tolist(),
+                                org_class_names[unknown_images_to_add].tolist(),fillvalue=batch_no+1))
         all_batches.extend(knowns)
         if batch_no>=0:
             all_batches.extend(unknowns)

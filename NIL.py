@@ -1,6 +1,5 @@
 import argparse
 import torch
-torch.multiprocessing.set_sharing_strategy('file_system')
 import numpy as np
 import torch.multiprocessing as mp
 import pathlib
@@ -8,7 +7,7 @@ import itertools
 import protocols
 import exemplar_selection
 import data_prep
-import common_operations
+import network_operations
 import viz
 from vast import opensetAlgos
 from vast.tools import logger as vastlogger
@@ -56,7 +55,6 @@ def command_line_options():
 
 
 if __name__ == "__main__":
-    mp.set_start_method('forkserver', force=True)
     args = command_line_options()
     args.world_size = torch.cuda.device_count()
     if args.world_size==1:
@@ -100,7 +98,6 @@ if __name__ == "__main__":
         for dm, ct in combinations_to_try:
             args.distance_multiplier, args.cover_threshold = [dm], [ct]
 
-            rolling_models = {}
             results_for_all_batches = {}
             completed_q = mp.Queue()
             for batch in set(batch_nos.tolist()):
@@ -108,12 +105,12 @@ if __name__ == "__main__":
                 current_batch = {}
                 # Add exemplars
                 if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-                    current_batch.update(exemplar_selection.random_selector(features, rolling_models, no_of_exemplars=args.no_of_exemplars))
+                    current_batch.update(exemplar_selection.random_selector(features, dict(), no_of_exemplars=args.no_of_exemplars))
                 # Add all negative samples
                 if args.all_samples and batch!=0:
                     current_batch.update(exemplar_selection.add_all_negatives(features, rolling_models))
 
-                for cls in sorted(set(classes[batch_nos==batch].tolist())-set(rolling_models.keys())):
+                for cls in sorted(set(classes[batch_nos==batch].tolist())):
                     indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes==cls)]))[0]
                     indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                     indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
@@ -121,22 +118,11 @@ if __name__ == "__main__":
                 logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
                 event.clear()
-                no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist())-set(rolling_models.keys()))
-                if args.no_multiprocessing or no_of_classes_to_process==1:
-                    args.world_size = 1
-                    common_operations.call_specific_approach(0, args, current_batch, completed_q, event)
-                    p=None
-                    models = common_operations.convert_q_to_dict(args, completed_q, p, event)
-                else:
-                    args.world_size = min(no_of_classes_to_process, torch.cuda.device_count())
-                    p = mp.spawn(common_operations.call_specific_approach,
-                                 args=(args, current_batch, completed_q, event),
-                                 nprocs=args.world_size,
-                                 join=False)
-                    models = common_operations.convert_q_to_dict(args, completed_q, p, event)
+                no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
+                net_ops_obj = network_operations.netowrk(num_classes=no_of_classes_to_process)
+                net_ops_obj.training(training_data=current_batch)
 
                 logger.info(f"Preparing validation data")
-                rolling_models.update(models)
                 current_batch = {}
                 for cls in sorted(set(val_classes[val_batch_nos==batch].tolist())):
                     indx_of_interest = np.where(np.in1d(val_features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes==cls)]))[0]
@@ -145,22 +131,8 @@ if __name__ == "__main__":
                     current_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
                 logger.info(f"Running on validation data")
 
-                event.clear()
-                no_of_classes_to_process = len(set(val_classes[val_batch_nos==batch].tolist()))
-                if args.no_multiprocessing or no_of_classes_to_process==1:
-                    args.world_size = 1
-                    common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
-                    p = None
-                    results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
-                    args.world_size = torch.cuda.device_count()
-                else:
-                    args.world_size = min(no_of_classes_to_process, torch.cuda.device_count())
-                    p = mp.spawn(common_operations.call_specific_approach,
-                                 args=(args, current_batch, completed_q, event, rolling_models),
-                                 nprocs=args.world_size, join=False)
-                    results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
-                results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
-
+                results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
+                results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
 
             args.output_dir=pathlib.Path(args.output_dir)
             args.output_dir.mkdir(parents=True, exist_ok=True)

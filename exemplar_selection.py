@@ -6,62 +6,24 @@ torch.manual_seed(0)
 random.seed(0)
 np.random.seed(0)
 
-def random_selector(features, rolling_models,no_of_exemplars=None):
+def random_selector(features, classes_of_interest, no_of_exemplars=None):
     logger = vastlogger.get_logger()
-    logger.info(f" Randomly Selecting extreme vectors and adding them to exemplars ".center(90, '#'))
-    current_batch_size = 0
     exemplars_to_return = {}
-    no_of_exemplar_batches = 0
-    exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = []
-    for cls_name in rolling_models:
+    for cls_name in classes_of_interest:
         torch.manual_seed(0)
         random.seed(0)
         np.random.seed(0)
-        ev_key_name = list(set(rolling_models[cls_name].keys())-{'weibulls'}-{'extreme_vectors_indexes'})[0]
-        ind_of_interest = torch.randint(rolling_models[cls_name][ev_key_name].shape[0],
+        ind_of_interest = torch.randint(features[cls_name]['features'].shape[0],
                                         (min(no_of_exemplars,
-                                             rolling_models[cls_name][ev_key_name].shape[0]),
+                                             features[cls_name]['features'].shape[0]),
                                          1))
-        current_exemplars = features[cls_name]['features'].gather(0, ind_of_interest.expand(
-            -1, rolling_models[cls_name][ev_key_name].shape[1]))
-        exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'].append(current_exemplars)
-        current_batch_size += current_exemplars.shape[0]
-        if current_batch_size >= 1000:
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(
-                exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'])
-            no_of_exemplar_batches += 1
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = []
-            current_batch_size = 0
-    if type(exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']) == list:
-        if len(exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']) == 0:
-            del exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']
-        else:
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(
-                exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'])
-            no_of_exemplar_batches += 1
+        current_exemplars = features[cls_name]['features'].gather(
+                                            0, ind_of_interest.expand(-1, features[cls_name]['features'].shape[1]))
+        exemplars_to_return[cls_name]=current_exemplars
     return exemplars_to_return
 
-
-
-def add_all_negatives(features, rolling_models,no_of_exemplars=None):
-    no_of_exemplar_batches = 0
-    current_batch_size = 0
+def add_all_negatives(features, classes_of_interest,no_of_exemplars=None):
     exemplars_to_return = {}
-    exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = []
-    for cls in sorted(set(rolling_models.keys())):
-        current_exemplars = features[cls]['features']
-        exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'].append(current_exemplars)
-        current_batch_size += current_exemplars.shape[0]
-        if current_batch_size >= 1000:
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(
-                exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'])
-            no_of_exemplar_batches += 1
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = []
-            current_batch_size = 0
-    if type(exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']) == list:
-        if len(exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']) == 0:
-            del exemplars_to_return[f'exemplars_{no_of_exemplar_batches}']
-        else:
-            exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'] = torch.cat(
-                exemplars_to_return[f'exemplars_{no_of_exemplar_batches}'])
+    for cls in classes_of_interest:
+        exemplars_to_return[cls] = features[cls]['features']
     return exemplars_to_return

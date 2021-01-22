@@ -25,7 +25,21 @@ class netowrk():
         self.net = self.net.cuda()
         self.cls_names = []
 
+    def modify_net(self, new_num_classes):
+        new_net = MLP(num_classes=new_num_classes).cuda()
+        weights = self.net.state_dict()
+        to_add = torch.rand(new_net.fc2.out_features - self.net.fc2.out_features, weights['fc2.weight'].shape[1]).cuda()
+        weights['fc2.weight'] = torch.cat((weights['fc2.weight'], to_add))
+        to_add = torch.rand(new_net.fc2.out_features - self.net.fc2.out_features).cuda()
+        weights['fc2.bias'] = torch.cat((weights['fc2.bias'], to_add))
+        new_net.load_state_dict(weights)
+        self.net = new_net
+
     def prep_training_data(self, training_data):
+        classes_in_consideration = self.cls_names + sorted(list(set(training_data.keys())-set(self.cls_names)))
+        if len(classes_in_consideration)!=self.net.fc2.out_features:
+            logger.critical(f"New number of classes {len(classes_in_consideration)}")
+            self.modify_net(len(classes_in_consideration))
         training_tensor_x=[]
         training_tensor_label=[]
         for cls in training_data:
@@ -34,24 +48,23 @@ class netowrk():
         training_tensor_x = torch.cat(training_tensor_x).type(torch.FloatTensor).cuda()
         training_tensor_label = np.array(training_tensor_label)
         training_tensor_y=torch.zeros(training_tensor_label.shape[0]).type(torch.LongTensor).cuda()
-        cls_names = set(training_tensor_label.tolist())
-        cls_names = sorted(cls_names)
-        for cls_no,cls in enumerate(cls_names):
+        for cls_no,cls in enumerate(classes_in_consideration):
             training_tensor_y[training_tensor_label==cls]=cls_no
         self.dataset = data_util.TensorDataset(training_tensor_x, training_tensor_y)
-        self.cls_names = cls_names
+        self.cls_names = classes_in_consideration
 
     def training(self, training_data, epochs=150, lr=0.01, batch_size=256):
         self.prep_training_data(training_data)
         optimizer = torch.optim.SGD(self.net.parameters(), lr=lr, momentum=0.9)
         loader = data_util.DataLoader(self.dataset, batch_size=batch_size)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
+        no_of_print_statements=10
+        printing_interval=epochs//no_of_print_statements
         for epoch in range(epochs):
             loss_history=[]
             # numer of correct, total number
             train_accuracy = torch.zeros(2, dtype=int)
             for x, y in loader:
-                # x,y=x.cuda(),y.cuda()
                 optimizer.zero_grad()
                 output = self.net(x)
                 loss = loss_fn(output, y)
@@ -60,9 +73,13 @@ class netowrk():
                 loss.mean().backward()
                 optimizer.step()
 
-            logger.info(f"Epoch {epoch:03d}/{epochs:03d} \t"
-                        f"train-loss: {np.mean(loss_history):1.5f}  \t"
-                        f"accuracy: {float(train_accuracy[0]) / float(train_accuracy[1]):9.5f}")
+            to_print=f"Epoch {epoch:03d}/{epochs:03d} \t"\
+                     f"train-loss: {np.mean(loss_history):1.5f}  \t"\
+                     f"accuracy: {float(train_accuracy[0]) / float(train_accuracy[1]):9.5f}"
+            if epoch%printing_interval==0:
+                logger.info(to_print)
+            else:
+                logger.debug(to_print)
 
     def inference(self, validation_data):
         results = {}

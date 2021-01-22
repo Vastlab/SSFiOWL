@@ -89,76 +89,67 @@ if __name__ == "__main__":
             args.feature_files = args.validation_feature_files
             val_features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(val_classes.tolist())))
 
-        if len(all_new_classes_per_batch) == len(org_dm) == len(org_ct):
-            combinations_to_try = ((org_dm[exp_no], org_ct[exp_no]),)
-        else:
-            combinations_to_try = itertools.product(org_dm, org_ct)
+        net_ops_obj = network_operations.netowrk(num_classes=0)
 
-        event = mp.Event()
-        for dm, ct in combinations_to_try:
-            args.distance_multiplier, args.cover_threshold = [dm], [ct]
+        results_for_all_batches = {}
+        completed_q = mp.Queue()
+        for batch in set(batch_nos.tolist()):
+            logger.info(f"Preparing training batch {batch}")
+            current_batch = {}
+            # Add exemplars
+            if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
+                current_batch.update(exemplar_selection.random_selector(features, net_ops_obj.cls_names, no_of_exemplars=args.no_of_exemplars))
+            # Add all negative samples
+            if args.all_samples and batch!=0:
+                current_batch.update(exemplar_selection.add_all_negatives(features, net_ops_obj.cls_names))
 
-            results_for_all_batches = {}
-            completed_q = mp.Queue()
-            for batch in set(batch_nos.tolist()):
-                logger.info(f"Preparing training batch {batch}")
-                current_batch = {}
-                # Add exemplars
-                if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-                    current_batch.update(exemplar_selection.random_selector(features, dict(), no_of_exemplars=args.no_of_exemplars))
-                # Add all negative samples
-                if args.all_samples and batch!=0:
-                    current_batch.update(exemplar_selection.add_all_negatives(features, rolling_models))
+            for cls in sorted(set(classes[batch_nos==batch].tolist())-set(net_ops_obj.cls_names)):
+                indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes==cls)]))[0]
+                indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
+                indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
+                current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
+            logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
-                for cls in sorted(set(classes[batch_nos==batch].tolist())):
-                    indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes==cls)]))[0]
-                    indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
-                    indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
-                    current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
-                logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
+            no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
+            net_ops_obj.training(training_data=current_batch)
 
-                event.clear()
-                no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
-                net_ops_obj = network_operations.netowrk(num_classes=no_of_classes_to_process)
-                net_ops_obj.training(training_data=current_batch)
+            logger.info(f"Preparing validation data")
+            current_batch = {}
+            for cls in sorted(set(val_classes[val_batch_nos==batch].tolist())):
+                indx_of_interest = np.where(np.in1d(val_features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes==cls)]))[0]
+                indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
+                indx_of_interest = indx_of_interest[:,None].expand(-1, val_features[cls]['features'].shape[1])
+                current_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
+            logger.info(f"Running on validation data")
 
-                logger.info(f"Preparing validation data")
-                current_batch = {}
-                for cls in sorted(set(val_classes[val_batch_nos==batch].tolist())):
-                    indx_of_interest = np.where(np.in1d(val_features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes==cls)]))[0]
-                    indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
-                    indx_of_interest = indx_of_interest[:,None].expand(-1, val_features[cls]['features'].shape[1])
-                    current_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
-                logger.info(f"Running on validation data")
+            results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
+            results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
 
-                results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
-                results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
+        args.output_dir=pathlib.Path(args.output_dir)
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        logger.critical(f"Results for {new_classes_per_batch} new classes/batch DM {args.distance_multiplier}"
+                        f" CT {args.cover_threshold}")
 
-            args.output_dir=pathlib.Path(args.output_dir)
-            args.output_dir.mkdir(parents=True, exist_ok=True)
-            logger.critical(f"Results for {new_classes_per_batch} new classes/batch DM {args.distance_multiplier}"
-                            f" CT {args.cover_threshold}")
+        acc_to_plot=[]
+        batch_nos_to_plot = []
+        for batch_no in sorted(results_for_all_batches.keys()):
+            scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
+            correct = 0.
+            total = 0.
+            for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
+                scores = results_for_all_batches[batch_no][test_cls]
+                total+=scores.shape[0]
+                max_indx = torch.argmax(scores,dim=1)
+                correct+=sum(scores_order[max_indx]==test_cls)
+            acc = (correct/total)*100.
+            acc_to_plot.append(acc)
+            batch_nos_to_plot.append(scores_order.shape[0])
+            logger.critical(f"Accuracy on Batch {batch_no} : {acc:.2f}")
 
-            acc_to_plot=[]
-            batch_nos_to_plot = []
-            for batch_no in sorted(results_for_all_batches.keys()):
-                scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
-                correct = 0.
-                total = 0.
-                for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
-                    scores = results_for_all_batches[batch_no][test_cls]
-                    total+=scores.shape[0]
-                    max_indx = torch.argmax(scores,dim=1)
-                    correct+=sum(scores_order[max_indx]==test_cls)
-                acc = (correct/total)*100.
-                acc_to_plot.append(acc)
-                batch_nos_to_plot.append(scores_order.shape[0])
-                logger.critical(f"Accuracy on Batch {batch_no} : {acc:.2f}")
+        logger.critical(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
 
-            logger.critical(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
-
-            all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(acc_to_plot):06.2f}",
-                                            f"{args.distance_multiplier[0]}", f"{args.cover_threshold[0]}"))
+        all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(acc_to_plot):06.2f}",
+                                        f"{args.distance_multiplier[0]}", f"{args.cover_threshold[0]}"))
 
         all_grid_search_results = sorted(all_grid_search_results)
         per_class_best_results.append(' '.join(all_grid_search_results[-1]))

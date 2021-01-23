@@ -85,7 +85,8 @@ class netowrk():
         results = {}
         for cls in validation_data:
             with torch.no_grad():
-                results[cls] = self.net(validation_data[cls].type(torch.FloatTensor).cuda()).cpu()
+                logits = self.net(validation_data[cls].type(torch.FloatTensor).cuda()).cpu()
+                results[cls] = torch.nn.functional.softmax(logits, dim=1)
         return results
 
 

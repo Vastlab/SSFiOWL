@@ -7,7 +7,7 @@ logger = vastlogger.get_logger()
 def calculate_CCA(results_for_all_batches):
     CCA = []
     for batch_no in sorted(results_for_all_batches.keys())[:-1]:
-        scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+        scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
         correct = 0.
         total = 0.
         for test_cls in scores_order.tolist():
@@ -28,7 +28,7 @@ def calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=0.5):
         unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
                            set(results_for_all_batches[batch_no]['classes_order']) -
                            {'classes_order'})
-        scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+        scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
         UDA_correct = 0.
         UDA_total = 0.
         OCA_correct = 0.

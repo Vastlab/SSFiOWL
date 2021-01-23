@@ -22,14 +22,14 @@ def mimic_incremental(args, current_batch,rolling_models, probabilities_for_trai
 
 
 @vastlogger.time_recorder
-def learn_new_unknowns(args, operating_batch, rolling_models, probabilities_for_train_set):
-    if len(rolling_models.keys())==0:
+def learn_new_unknowns(args, operating_batch, class_already_enrolled, probabilities_for_train_set):
+    if len(class_already_enrolled)==0:
         return operating_batch
     unknowness_scores = find_unknowness_probabilities(probabilities_for_train_set,
                                                       unknowness_threshold=args.unknowness_threshold)
     accumulated_samples = {}
     class_names = sorted(list(set(operating_batch.keys())))
     for cls in class_names:
-        if cls not in rolling_models:
+        if cls not in class_already_enrolled:
             accumulated_samples[cls] = operating_batch[cls][unknowness_scores[cls]]
     return accumulated_samples

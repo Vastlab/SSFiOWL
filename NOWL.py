@@ -8,6 +8,7 @@ import torch.multiprocessing as mp
 import protocols
 import data_prep
 import common_operations
+import network_operations
 import exemplar_selection
 import eval
 import accumulation_algos
@@ -79,7 +80,6 @@ def get_current_batch(classes, features, batch_nos, batch, images, classes_to_fe
     return current_batch
 
 if __name__ == "__main__":
-    mp.set_start_method('forkserver', force=True)
     args = command_line_options()
     args.world_size = torch.cuda.device_count()
     if args.world_size==1:
@@ -106,81 +106,47 @@ if __name__ == "__main__":
     args.feature_files = args.validation_feature_files
     val_features = data_prep.prep_all_features_parallel(args)
 
-    event = mp.Event()
-    rolling_models = {}
     results_for_all_batches = {}
     completed_q = mp.Queue()
     list_of_all_batch_nos = set(batch_nos.tolist())
+    net_ops_obj = network_operations.netowrk(num_classes=0)
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
 
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
         probabilities_for_train_set={}
-        if len(rolling_models.keys())>0:
+        if len(net_ops_obj.cls_names)>0:
             logger.info(f"Getting probabilities for the current operational batch")
-            event.clear()
-            if args.no_multiprocessing:
-                args.world_size = 1
-                common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
-                p = None
-                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
-                args.world_size = torch.cuda.device_count()
-            else:
-                p = mp.spawn(common_operations.call_specific_approach,
-                             args=(args, current_batch, completed_q, event, rolling_models),
-                             nprocs=args.world_size, join=False)
-                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
-            probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
+            probabilities_for_train_set = net_ops_obj.inference(validation_data=current_batch)
+            probabilities_for_train_set['classes_order'] = net_ops_obj.cls_names
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, rolling_models, probabilities_for_train_set)
+        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names, probabilities_for_train_set)
 
-        # Add exemplars
         exemplars_to_add={}
+        # Add exemplars
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-            exemplars_to_add = exemplar_selection.random_selector(features, rolling_models,
+            exemplars_to_add = exemplar_selection.random_selector(features, net_ops_obj.cls_names,
                                                                   no_of_exemplars=args.no_of_exemplars)
             accumulated_samples.update(exemplars_to_add)
+        # Add all negative samples
+        if args.all_samples and batch!=0:
+            exemplars_to_add = exemplar_selection.add_all_negatives(features, net_ops_obj.cls_names)
+            current_batch.update(exemplars_to_add)
 
         # Run enrollment for unknown samples probabilities_for_train_set
         no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
         logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
-        event.clear()
-        if args.no_multiprocessing or  no_of_classes_to_enroll== 1:
-            args.world_size = 1
-            common_operations.call_specific_approach(0, args, accumulated_samples, completed_q, event)
-            p=None
-            models = common_operations.convert_q_to_dict(args, completed_q, p, event)
-            args.world_size = torch.cuda.device_count()
-        else:
-            args.world_size = min(no_of_classes_to_enroll, torch.cuda.device_count())
-            p = mp.spawn(common_operations.call_specific_approach,
-                         args=(args, accumulated_samples, completed_q, event),
-                         nprocs=args.world_size,
-                         join=False)
-            models = common_operations.convert_q_to_dict(args, completed_q, p, event)
-            args.world_size = torch.cuda.device_count()
-        rolling_models.update(models)
+        net_ops_obj.training(training_data=accumulated_samples)
 
         logger.info(f"Preparing validation data")
         current_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
                                           classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
         logger.info(f"Running on validation data")
-        event.clear()
-        if args.no_multiprocessing:
-            args.world_size = 1
-            common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
-            p = None
-            results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
-            args.world_size = torch.cuda.device_count()
-        else:
-            p = mp.spawn(common_operations.call_specific_approach,
-                         args=(args, current_batch, completed_q, event, rolling_models),
-                         nprocs=args.world_size, join=False)
-            results_for_all_batches[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
-        results_for_all_batches[batch]['classes_order'] = sorted(rolling_models.keys())
+        results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
+        results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
 
     dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \
                f"_NewClassesPerBatch-{args.new_classes_per_batch}"

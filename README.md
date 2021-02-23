@@ -4,9 +4,11 @@ This repo reproduces results from the paper "Self-Supervised Features Improve Op
 
 Please use the following BibTex to cite this work.
 ```
-@article{dhamija2020SSFIOWL,
+article{dhamija2021self,
   title={Self-Supervised Features Improve Open-World Learning},
-  year={2020}
+  author={Dhamija, Akshay Raj and Ahmad, Touqeer and Schwan, Jonathan and Jafarzadeh, Mohsen and Li, Chunchun and Boult, Terrance E},
+  journal={arXiv preprint arXiv:2102.07848},
+  year={2021}
 }
 ```
 ###### Dependencies

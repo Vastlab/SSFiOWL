@@ -197,5 +197,11 @@ if __name__ == "__main__":
     pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
     CCA = eval.calculate_CCA(results_for_all_batches)
     UDA, OCA, _ = eval.calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=args.unknowness_threshold)
+    UDA_threshold = 0.95
+    logger.critical(f"For fixed UDA of {UDA_threshold}")
+    for_fixed_UDA_UDA, for_fixed_UDA_OCA, for_fixed_UDA_CCA = eval.fixed_UDA_eval(results_for_all_batches,
+                                                                                  UDA_threshold=UDA_threshold)
     logger.critical(f"For Tabeling")
-    logger.critical(f"{np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")
+    logger.critical(f"Thresholding on scores {np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")
+    logger.critical(f"For fixed UDA {np.mean(for_fixed_UDA_UDA):.2f} & {np.mean(for_fixed_UDA_OCA):.2f} &"
+                    f" {np.mean(for_fixed_UDA_CCA):.2f}")

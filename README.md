@@ -23,12 +23,21 @@ For extracting the features please use the script provided at https://github.com
 Sample command used to run incremental learning experiments using the NIL approach
 
 ```
-time python NIL.py --training_feature_files {Feature_Path}/resnet50/imagenet_1000_train.hdf5 --validation_feature_files {Feature_Path}/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool --OOD_Algo EVM --tailsize 1. --distance_metric euclidean --initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /tmp/ --distance_multiplier 0.7 --no_of_exemplars 20
+time python NIL.py --training_feature_files {Feature_Path}/resnet50/imagenet_1000_train.hdf5 \
+ --validation_feature_files {Feature_Path}/resnet50/imagenet_1000_val.hdf5 \
+ --layer_names avgpool --OOD_Algo EVM --tailsize 1. --distance_metric euclidean \
+ --initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 \ 
+ --output_dir /tmp/ --distance_multiplier 0.7 --no_of_exemplars 20
 ```
 
 ###### Non-backpropagting Open World Learning (NOWL)
 Sample command used to run open world learning experiments using the NOWL approach
 
 ```
-time python NOWL.py --training_feature_files /scratch/adhamija/FeaturesCopy/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_train.hdf5 --validation_feature_files /scratch/adhamija/FeaturesCopy/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool --OOD_Algo EVM --tailsize 1. --distance_metric euclidean --initialization_classes 50 --total_no_of_classes 100 --output_dir /tmp/ --distance_multiplier 0.7 --no_of_exemplars 20 --new_classes_per_batch 10 --cover_threshold 0.7 --port_no 3393 --known_sample_per_batch 2500 --unknown_sample_per_batch 2500 --initial_no_of_samples 15000
+time python NOWL.py --training_feature_files {Feature_Path}/resnet50/imagenet_1000_train.hdf5 \
+ --validation_feature_files {Feature_Path}/resnet50/imagenet_1000_val.hdf5 \
+ --layer_names avgpool --OOD_Algo EVM --tailsize 1. --distance_metric euclidean \
+ --initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 \
+ --output_dir /tmp/ --distance_multiplier 0.7 --no_of_exemplars 20 --cover_threshold 0.7 \
+ --known_sample_per_batch 2500 --unknown_sample_per_batch 2500 --initial_no_of_samples 15000
 ```

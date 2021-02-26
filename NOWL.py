@@ -40,6 +40,8 @@ def command_line_options():
                         choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
     parser.add_argument("--unknowness_threshold", type=float, default=0.5,
                         help="unknowness probability score above which a sample is considered as unknown\ndefault: %(default)s")
+    parser.add_argument("--UDA_Threshold", nargs="+", type=float, default=[0.7, 0.8, 0.9, 0.95, 1.0],
+                                   help="tail size to use\ndefault: %(default)s")
 
     protocol_params = parser.add_argument_group('Protocol params')
     protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
@@ -197,11 +199,10 @@ if __name__ == "__main__":
     pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
     CCA = eval.calculate_CCA(results_for_all_batches)
     UDA, OCA, _ = eval.calculate_UDA_OCA(results_for_all_batches, unknowness_threshold=args.unknowness_threshold)
-    UDA_threshold = 0.95
-    logger.critical(f"For fixed UDA of {UDA_threshold}")
-    for_fixed_UDA_UDA, for_fixed_UDA_OCA, for_fixed_UDA_CCA = eval.fixed_UDA_eval(results_for_all_batches,
-                                                                                  UDA_threshold=UDA_threshold)
     logger.critical(f"For Tabeling")
     logger.critical(f"Thresholding on scores {np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")
-    logger.critical(f"For fixed UDA {np.mean(for_fixed_UDA_UDA):.2f} & {np.mean(for_fixed_UDA_OCA):.2f} &"
-                    f" {np.mean(for_fixed_UDA_CCA):.2f}")
+    for UDA_threshold in args.UDA_Threshold:
+        for_fixed_UDA_UDA, for_fixed_UDA_OCA, for_fixed_UDA_CCA = eval.fixed_UDA_eval(results_for_all_batches,
+                                                                                      UDA_threshold=UDA_threshold)
+        logger.critical(f"For fixed UDA of {UDA_threshold} \t\t {np.mean(for_fixed_UDA_UDA):.2f} "
+                        f"& {np.mean(for_fixed_UDA_OCA):.2f} & {np.mean(for_fixed_UDA_CCA):.2f}")

@@ -78,25 +78,26 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
         comb=list(zip(current_batch_scores,current_batch_prediction,current_batch_gt))
         comb.sort(reverse=True)
         current_batch_scores,current_batch_prediction,current_batch_gt=zip(*comb)
+        # Detections are now sorted in decreasing order of probability scores
         current_batch_scores=np.array(current_batch_scores)
         current_batch_prediction=np.array(current_batch_prediction)
         current_batch_gt=np.array(current_batch_gt)
-
-        UDA_correct = np.in1d(current_batch_gt, unknown_classes)
+        known_flag = ~np.in1d(current_batch_gt, unknown_classes)
+        UDA_correct = ~known_flag
         UDA_correct = np.cumsum(UDA_correct)
-        UDA_correct = UDA_correct/UDA_correct[-1]
-        OCA_correct = np.in1d(current_batch_gt, unknown_classes)
-        OCA_correct[~OCA_correct] = current_batch_gt[~OCA_correct]==current_batch_prediction[~OCA_correct]
+        UDA_correct = UDA_correct[-1]-UDA_correct
+        UDA_correct = UDA_correct/UDA_correct[0]
+        OCA_correct = np.zeros(current_batch_gt.shape[0], dtype='bool')
+        OCA_correct[known_flag] = current_batch_gt[known_flag]==current_batch_prediction[known_flag]
         OCA_correct = np.cumsum(OCA_correct)
         OCA_correct = OCA_correct/OCA_correct.shape[0]
-        temp = ~np.in1d(current_batch_gt, unknown_classes)
         CCA_correct = np.zeros(current_batch_gt.shape[0], dtype='bool')
-        CCA_correct[temp] = current_batch_gt[temp]==current_batch_prediction[temp]
+        CCA_correct[known_flag] = current_batch_gt[known_flag]==current_batch_prediction[known_flag]
         CCA_correct = np.cumsum(CCA_correct)
-        CCA_correct = CCA_correct/sum(temp)
-        UDA.append(UDA_correct[UDA_correct<=UDA_threshold][-1]*100.)
-        OCA.append(OCA_correct[UDA_correct<=UDA_threshold][-1]*100.)
-        CCA.append(CCA_correct[UDA_correct<=UDA_threshold][-1]*100.)
+        CCA_correct = CCA_correct/sum(known_flag)
+        UDA.append(UDA_correct[UDA_correct>=UDA_threshold][-1]*100.)
+        OCA.append(OCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
+        CCA.append(CCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
         logger.critical(f"Batch {batch_no} : UDA {UDA[-1]:.2f}\t OCA {OCA[-1]:.2f}\t CCA {CCA[-1]:.2f}")
     logger.critical(f"Average Unknowness Accuracy : {np.mean(UDA):.2f} OCA {np.mean(OCA):.2f} CCA {np.mean(CCA):.2f}")
     return UDA, OCA, CCA

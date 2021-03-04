@@ -43,7 +43,12 @@ def eval_data_prep(current_batch_scores, current_batch_prediction, current_batch
     CCA_correct[known_flag] = current_batch_gt[known_flag] == current_batch_prediction[known_flag]
     CCA_correct = np.cumsum(CCA_correct)
     CCA_correct = CCA_correct / sum(known_flag)
-    return current_batch_scores, CCA_correct, UDA_correct, OCA_correct
+    # Threshold tie breaking
+    current_batch_scores, indx = np.unique(current_batch_scores, return_index=True)
+    current_batch_scores, indx = current_batch_scores[::-1], indx[::-1]
+    indx = indx[1:]-1
+    indx = np.array(indx.tolist() + [CCA_correct.shape[0] - 1])
+    return current_batch_scores, CCA_correct[indx], UDA_correct[indx], OCA_correct[indx]
 
 
 

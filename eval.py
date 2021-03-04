@@ -34,7 +34,7 @@ def eval_data_prep(current_batch_scores, current_batch_prediction, current_batch
     UDA_correct = ~known_flag
     UDA_correct = np.cumsum(UDA_correct)
     UDA_correct = UDA_correct[-1] - UDA_correct
-    UDA_correct = UDA_correct / UDA_correct[0]
+    UDA_correct = UDA_correct / max(UDA_correct[0], 1)
     OCA_correct = np.zeros(current_batch_gt.shape[0], dtype='bool')
     OCA_correct[known_flag] = current_batch_gt[known_flag] == current_batch_prediction[known_flag]
     OCA_correct = np.cumsum(OCA_correct)
@@ -49,6 +49,41 @@ def eval_data_prep(current_batch_scores, current_batch_prediction, current_batch
     indx = indx[1:]-1
     indx = np.array(indx.tolist() + [CCA_correct.shape[0] - 1])
     return current_batch_scores, CCA_correct[indx], UDA_correct[indx], OCA_correct[indx]
+
+
+
+def calculate_CCA_on_thresh(results_for_all_batches, threshold=0.):
+    UDA = []
+    OCA = []
+    CCA = []
+    table_data = []
+    logger.critical(f"Evaluating CCA at probability threshold of {threshold}")
+    for batch_no in sorted(results_for_all_batches.keys()):
+        unknown_classes = np.array([])
+        current_batch_scores=[]
+        current_batch_gt=[]
+        current_batch_prediction=[]
+        scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
+        for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
+            max_scores = torch.max(results_for_all_batches[batch_no][test_cls], dim=1)
+            current_batch_scores.extend(max_scores.values.tolist())
+            current_batch_prediction.extend(scores_order[max_scores.indices].tolist())
+            current_batch_gt.extend([test_cls]*max_scores.values.shape[0])
+        current_batch_scores, CCA_correct, UDA_correct, OCA_correct = eval_data_prep(current_batch_scores,
+                                                                                     current_batch_prediction,
+                                                                                     current_batch_gt, unknown_classes)
+        UDA.append(UDA_correct[current_batch_scores>=threshold][-1]*100.)
+        OCA.append(OCA_correct[current_batch_scores>=threshold][-1]*100.)
+        CCA.append(CCA_correct[current_batch_scores>=threshold][-1]*100.)
+        table_data.append((batch_no, f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
+    table_data.append(("Average", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+    table_data_str = tt.to_string(table_data,
+                                  header=["Batch No", "UDA", "OCA", "CCA"],
+                                  style=tt.styles.rounded_thick,
+                                  alignment="cccc",
+                                  padding=(0, 1))
+    logger.warning("\n" + table_data_str)
+    return UDA, OCA, CCA
 
 
 

@@ -11,7 +11,7 @@ import network_operations
 import viz
 from vast import opensetAlgos
 from vast.tools import logger as vastlogger
-
+import eval
 
 def command_line_options():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
             no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
-            net_ops_obj.training(training_data=current_batch)
+            net_ops_obj.training(training_data=current_batch ,lr=1e-2)
 
             logger.info(f"Preparing validation data")
             current_batch = {}
@@ -130,25 +130,8 @@ if __name__ == "__main__":
         logger.critical(f"Results for {new_classes_per_batch} new classes/batch DM {args.distance_multiplier}"
                         f" CT {args.cover_threshold}")
 
-        acc_to_plot=[]
-        batch_nos_to_plot = []
-        for batch_no in sorted(results_for_all_batches.keys()):
-            scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
-            correct = 0.
-            total = 0.
-            for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
-                scores = results_for_all_batches[batch_no][test_cls]
-                total+=scores.shape[0]
-                max_indx = torch.argmax(scores,dim=1)
-                correct+=sum(scores_order[max_indx]==test_cls)
-            acc = (correct/total)*100.
-            acc_to_plot.append(acc)
-            batch_nos_to_plot.append(scores_order.shape[0])
-            logger.critical(f"Accuracy on Batch {batch_no} : {acc:.2f}")
-
-        logger.critical(f"Average Accuracy {np.mean(acc_to_plot):.2f}")
-
-        all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(acc_to_plot):06.2f}",
+        UDA, OCA, CCA = eval.calculate_CCA_on_thresh(results_for_all_batches, threshold=0.)
+        all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(CCA):06.2f}",
                                         f"{args.distance_multiplier[0]}", f"{args.cover_threshold[0]}"))
 
         all_grid_search_results = sorted(all_grid_search_results)

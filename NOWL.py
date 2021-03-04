@@ -142,7 +142,9 @@ if __name__ == "__main__":
         # Run enrollment for unknown samples probabilities_for_train_set
         no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
         logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
-        net_ops_obj.training(training_data=accumulated_samples)
+        net_ops_obj.training(training_data=accumulated_samples,
+                             lr=1e-2 if batch==0 else 1e-3,
+                             epochs=400 if batch==0 else 300)
 
         logger.info(f"Preparing validation data")
         current_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,

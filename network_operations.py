@@ -26,6 +26,7 @@ class netowrk():
         self.cls_names = []
 
     def modify_net(self, new_num_classes):
+        torch.manual_seed(0)
         new_net = MLP(num_classes=new_num_classes).cuda()
         weights = self.net.state_dict()
         to_add = torch.rand(new_net.fc2.out_features - self.net.fc2.out_features, weights['fc2.weight'].shape[1]).cuda()
@@ -48,9 +49,13 @@ class netowrk():
         training_tensor_x = torch.cat(training_tensor_x).type(torch.FloatTensor).cuda()
         training_tensor_label = np.array(training_tensor_label)
         training_tensor_y=torch.zeros(training_tensor_label.shape[0]).type(torch.LongTensor).cuda()
+        sample_weights = torch.ones(training_tensor_label.shape[0]).cuda()
+        sample_weights = sample_weights*100.
         for cls_no,cls in enumerate(classes_in_consideration):
             training_tensor_y[training_tensor_label==cls]=cls_no
-        self.dataset = data_util.TensorDataset(training_tensor_x, training_tensor_y)
+            sample_weights[training_tensor_label==cls]/=sample_weights[training_tensor_label==cls].shape[0]
+
+        self.dataset = data_util.TensorDataset(training_tensor_x, training_tensor_y, sample_weights)
         self.cls_names = classes_in_consideration
 
     def training(self, training_data, epochs=150, lr=0.01, batch_size=256):
@@ -62,14 +67,14 @@ class netowrk():
         printing_interval=epochs//no_of_print_statements
         for epoch in range(epochs):
             loss_history=[]
-            # numer of correct, total number
             train_accuracy = torch.zeros(2, dtype=int)
-            for x, y in loader:
+            for x, y, s in loader:
                 optimizer.zero_grad()
                 output = self.net(x)
                 loss = loss_fn(output, y)
                 train_accuracy += losses.accuracy(output, y)
                 loss_history.extend(loss.tolist())
+                loss *= s
                 loss.mean().backward()
                 optimizer.step()
 
@@ -88,8 +93,3 @@ class netowrk():
                 logits = self.net(validation_data[cls].type(torch.FloatTensor).cuda()).cpu()
                 results[cls] = torch.nn.functional.softmax(logits, dim=1)
         return results
-
-
-
-
-

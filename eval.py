@@ -22,7 +22,6 @@ def calculate_CCA(results_for_all_batches):
     return CCA
 
 
-
 def eval_data_prep(current_batch_scores, current_batch_prediction, current_batch_gt, unknown_classes):
     comb = list(zip(current_batch_scores, current_batch_prediction, current_batch_gt))
     comb.sort(reverse=True)
@@ -62,7 +61,7 @@ def fixed_probability_score(results_for_all_batches, unknowness_threshold=0.5):
         current_batch_scores=[]
         current_batch_gt=[]
         current_batch_prediction=[]
-        scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+        scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
         for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
             max_scores = torch.max(results_for_all_batches[batch_no][test_cls], dim=1)
             current_batch_scores.extend(max_scores.values.tolist())
@@ -99,7 +98,7 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
         current_batch_scores=[]
         current_batch_gt=[]
         current_batch_prediction=[]
-        scores_order = np.array(sorted(results_for_all_batches[batch_no]['classes_order']))
+        scores_order = np.array(results_for_all_batches[batch_no]['classes_order'])
         for test_cls in list(set(results_for_all_batches[batch_no].keys()) - {'classes_order'}):
             max_scores = torch.max(results_for_all_batches[batch_no][test_cls], dim=1)
             current_batch_scores.extend(max_scores.values.tolist())

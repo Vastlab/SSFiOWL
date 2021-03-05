@@ -113,7 +113,8 @@ if __name__ == "__main__":
     results_for_all_batches = {}
     completed_q = mp.Queue()
     list_of_all_batch_nos = set(batch_nos.tolist())
-    net_ops_obj = network_operations.netowrk(num_classes=0)
+    net_ops_obj = network_operations.network(num_classes=0,
+                                             input_feature_size=val_features[list(val_features.keys())[0]]['features'].shape[1])
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)

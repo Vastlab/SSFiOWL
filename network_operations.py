@@ -11,7 +11,7 @@ logger = vastlogger.get_logger()
 class MLP(nn.Module):
     def __init__(self, input_feature_size=2048, num_classes=50):
         super(MLP, self).__init__()
-        self.fc1 = nn.Linear(in_features=input_feature_size, out_features=1024, bias=True)
+        self.fc1 = nn.Linear(in_features=input_feature_size, out_features=input_feature_size//2, bias=True)
         self.fc2 = nn.Linear(in_features=self.fc1.out_features, out_features=num_classes, bias=True)
 
     def forward(self, x):
@@ -19,15 +19,17 @@ class MLP(nn.Module):
         x = self.fc2(x)
         return x
 
-class netowrk():
-    def __init__(self, num_classes):
-        self.net = MLP(num_classes=num_classes)
+class network():
+    def __init__(self, num_classes, input_feature_size):
+        self.net = MLP(num_classes=num_classes, input_feature_size=input_feature_size)
         self.net = self.net.cuda()
         self.cls_names = []
+        self.input_feature_size = input_feature_size
 
     def modify_net(self, new_num_classes):
         torch.manual_seed(0)
-        new_net = MLP(num_classes=new_num_classes).cuda()
+        new_net = MLP(num_classes=new_num_classes,
+                      input_feature_size=self.input_feature_size).cuda()
         weights = self.net.state_dict()
         to_add = torch.rand(new_net.fc2.out_features - self.net.fc2.out_features, weights['fc2.weight'].shape[1]).cuda()
         weights['fc2.weight'] = torch.cat((weights['fc2.weight'], to_add))

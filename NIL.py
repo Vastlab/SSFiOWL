@@ -89,7 +89,9 @@ if __name__ == "__main__":
             args.feature_files = args.validation_feature_files
             val_features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(val_classes.tolist())))
 
-        net_ops_obj = network_operations.netowrk(num_classes=0)
+        net_ops_obj = network_operations.network(num_classes=0,
+                                                 input_feature_size=
+                                                 val_features[list(val_features.keys())[0]]['features'].shape[1])
 
         results_for_all_batches = {}
         completed_q = mp.Queue()

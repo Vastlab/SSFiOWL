@@ -203,7 +203,7 @@ if __name__ == "__main__":
     logger.critical(f"For Tabeling")
     logger.critical(f"Thresholding on scores {np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")
     for UDA_threshold in args.UDA_Threshold:
-        UDA_on_fixed_UDA, OCA_on_fixed_UDA, CCA_on_fixed_UDA = eval.fixed_UDA_eval(results_for_all_batches,
+        UDA_on_fixed_UDA, OCA_on_fixed_UDA, CCA_on_fixed_UDA, _ = eval.fixed_UDA_eval(results_for_all_batches,
                                                                                       UDA_threshold=UDA_threshold)
         logger.critical(f"For fixed UDA of {UDA_threshold}\t {np.mean(UDA_on_fixed_UDA):.2f} "
                         f"& {np.mean(OCA_on_fixed_UDA):.2f} & {np.mean(CCA_on_fixed_UDA):.2f}")

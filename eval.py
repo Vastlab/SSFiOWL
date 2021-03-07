@@ -34,7 +34,7 @@ def eval_data_prep(current_batch_scores, current_batch_prediction, current_batch
     UDA_correct = ~known_flag
     UDA_correct = np.cumsum(UDA_correct)
     UDA_correct = UDA_correct[-1] - UDA_correct
-    UDA_correct = UDA_correct / UDA_correct[0]
+    UDA_correct = UDA_correct / max(UDA_correct[0], 1)
     OCA_correct = np.zeros(current_batch_gt.shape[0], dtype='bool')
     OCA_correct[known_flag] = current_batch_gt[known_flag] == current_batch_prediction[known_flag]
     OCA_correct = np.cumsum(OCA_correct)
@@ -57,6 +57,7 @@ def fixed_probability_score(results_for_all_batches, unknowness_threshold=0.5):
     OCA = []
     CCA = []
     table_data = []
+    threshold_scores = []
     logger.critical(f"Evaluation at fixed probability score of {unknowness_threshold}")
     for batch_no in sorted(results_for_all_batches.keys())[:-1]:
         unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
@@ -78,12 +79,13 @@ def fixed_probability_score(results_for_all_batches, unknowness_threshold=0.5):
         UDA.append(UDA_correct[current_batch_scores>=unknowness_threshold][-1]*100.)
         OCA.append(OCA_correct[current_batch_scores>=unknowness_threshold][-1]*100.)
         CCA.append(CCA_correct[current_batch_scores>=unknowness_threshold][-1]*100.)
-        table_data.append((batch_no, f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
-    table_data.append(("Average", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+        threshold_scores.append(current_batch_scores[current_batch_scores>=unknowness_threshold][-1])
+        table_data.append((batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
+    table_data.append(("Average", "", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
     table_data_str = tt.to_string(table_data,
-                                  header=["Batch No", "UDA", "OCA", "CCA"],
+                                  header=["Batch No", "Score", "UDA", "OCA", "CCA"],
                                   style=tt.styles.rounded_thick,
-                                  alignment="cccc",
+                                  alignment="ccccc",
                                   padding=(0, 1))
     logger.warning("\n" + table_data_str)
     return UDA, OCA, CCA
@@ -94,6 +96,7 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
     UDA = []
     OCA = []
     CCA = []
+    threshold_scores = []
     table_data = []
     for batch_no in sorted(results_for_all_batches.keys())[:-1]:
         unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
@@ -115,12 +118,13 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
         UDA.append(UDA_correct[UDA_correct>=UDA_threshold][-1]*100.)
         OCA.append(OCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
         CCA.append(CCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
-        table_data.append((batch_no, f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
-    table_data.append(("Average", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+        threshold_scores.append(current_batch_scores[UDA_correct>=UDA_threshold][-1])
+        table_data.append((batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
+    table_data.append(("Average", "", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
     table_data_str = tt.to_string(table_data,
-                                  header=["Batch No", "UDA", "OCA", "CCA"],
+                                  header=["Batch No", "Score", "UDA", "OCA", "CCA"],
                                   style=tt.styles.rounded_thick,
-                                  alignment="cccc",
+                                  alignment="ccccc",
                                   padding=(0, 1))
     logger.warning("\n"+table_data_str)
-    return UDA, OCA, CCA
+    return UDA, OCA, CCA, threshold_scores

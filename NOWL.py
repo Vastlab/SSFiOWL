@@ -38,13 +38,17 @@ def command_line_options():
 
     parser.add_argument('--accumulation_algo', default='learn_new_unknowns', type=str,
                         help='Name of the accumulation algorithm to use\ndefault: %(default)s',
-                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
+                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new',
+                                 'learn_new_unknowns_UDA_Thresh'])
+    parser.add_argument("--UDA_Threshold_for_training", type=float, default=0.7,
+                        help="UDA threshold used to decide unknowness threshold for enrolling samples from "
+                             "next operational batch\ndefault: %(default)s")
     parser.add_argument("--unknowness_threshold", type=float, default=0.5,
                         help="unknowness probability score above which a sample is considered as unknown\n"
                              "Note: Cannot be a list because this varies results at each operational batch"
                              "default: %(default)s")
     parser.add_argument("--UDA_Threshold", nargs="+", type=float, default=[0.7, 0.8, 0.9, 0.95, 1.0],
-                                   help="tail size to use\ndefault: %(default)s")
+                                   help="UDA Threshold for evaluation\ndefault: %(default)s")
 
     protocol_params = parser.add_argument_group('Protocol params')
     protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
@@ -115,19 +119,20 @@ if __name__ == "__main__":
     list_of_all_batch_nos = set(batch_nos.tolist())
     net_ops_obj = network_operations.network(num_classes=0,
                                              input_feature_size=val_features[list(val_features.keys())[0]]['features'].shape[1])
+    probabilities_for_train_set = {}
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
 
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
-        probabilities_for_train_set={}
+        probabilities_for_train_set[batch]={}
         if len(net_ops_obj.cls_names)>0:
             logger.info(f"Getting probabilities for the current operational batch")
-            probabilities_for_train_set = net_ops_obj.inference(validation_data=current_batch)
-            probabilities_for_train_set['classes_order'] = net_ops_obj.cls_names
+            probabilities_for_train_set[batch] = net_ops_obj.inference(validation_data=current_batch)
+            probabilities_for_train_set[batch]['classes_order'] = net_ops_obj.cls_names
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names, probabilities_for_train_set)
+        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names, probabilities_for_train_set, batch)
 
         exemplars_to_add={}
         # Add exemplars
@@ -140,7 +145,7 @@ if __name__ == "__main__":
             exemplars_to_add = exemplar_selection.add_all_negatives(features, net_ops_obj.cls_names)
             current_batch.update(exemplars_to_add)
 
-        # Run enrollment for unknown samples probabilities_for_train_set
+        # Run enrollment for unknown samples
         no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
         logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
         net_ops_obj.training(training_data=accumulated_samples,

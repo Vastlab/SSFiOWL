@@ -37,13 +37,17 @@ def command_line_options():
 
     parser.add_argument('--accumulation_algo', default='learn_new_unknowns', type=str,
                         help='Name of the accumulation algorithm to use\ndefault: %(default)s',
-                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new'])
+                        choices=['mimic_incremental','learn_new_unknowns','update_existing_learn_new',
+                                 'learn_new_unknowns_UDA_Thresh'])
+    parser.add_argument("--UDA_Threshold_for_training", type=float, default=0.7,
+                        help="UDA threshold used to decide unknowness threshold for enrolling samples from "
+                             "next operational batch\ndefault: %(default)s")
     parser.add_argument("--unknowness_threshold", type=float, default=0.5,
                         help="unknowness probability score above which a sample is considered as unknown\n"
                              "Note: Cannot be a list because this varies results at each operational batch"
                              "default: %(default)s")
     parser.add_argument("--UDA_Threshold", nargs="+", type=float, default=[0.7, 0.8, 0.9, 0.95, 1.0],
-                                   help="tail size to use\ndefault: %(default)s")
+                                   help="UDA Threshold for evaluation\ndefault: %(default)s")
 
     protocol_params = parser.add_argument_group('Protocol params')
     protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
@@ -115,30 +119,31 @@ if __name__ == "__main__":
     results_for_all_batches = {}
     completed_q = mp.Queue()
     list_of_all_batch_nos = set(batch_nos.tolist())
+    probabilities_for_train_set = {}
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
 
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
-        probabilities_for_train_set={}
+        probabilities_for_train_set[batch]={}
         if len(rolling_models.keys())>0:
-            logger.info(f"Getting probabilities for the current operational batch")
+            logger.info(f"Getting probabilities for the operational batch {batch}")
             event.clear()
             if args.no_multiprocessing:
                 args.world_size = 1
                 common_operations.call_specific_approach(0, args, current_batch, completed_q, event, rolling_models)
                 p = None
-                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
+                probabilities_for_train_set[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
                 args.world_size = torch.cuda.device_count()
             else:
                 p = mp.spawn(common_operations.call_specific_approach,
                              args=(args, current_batch, completed_q, event, rolling_models),
                              nprocs=args.world_size, join=False)
-                probabilities_for_train_set = common_operations.convert_q_to_dict(args, completed_q, p, event)
-            probabilities_for_train_set['classes_order'] = sorted(rolling_models.keys())
+                probabilities_for_train_set[batch] = common_operations.convert_q_to_dict(args, completed_q, p, event)
+            probabilities_for_train_set[batch]['classes_order'] = sorted(rolling_models.keys())
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, rolling_models, probabilities_for_train_set)
+        accumulated_samples = accumulation_algo(args, current_batch, rolling_models, probabilities_for_train_set, batch)
 
         # Add exemplars
         exemplars_to_add={}
@@ -147,7 +152,7 @@ if __name__ == "__main__":
                                                                   no_of_exemplars=args.no_of_exemplars)
             accumulated_samples.update(exemplars_to_add)
 
-        # Run enrollment for unknown samples probabilities_for_train_set
+        # Run enrollment for unknown samples
         no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
         logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
         event.clear()

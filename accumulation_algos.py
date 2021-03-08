@@ -29,9 +29,14 @@ def learn_new_unknowns(args, operating_batch, class_already_enrolled, probabilit
                                                       unknowness_threshold=args.unknowness_threshold)
     accumulated_samples = {}
     class_names = sorted(list(set(operating_batch.keys())))
+    k = 0
+    t = 0
     for cls in class_names:
         if cls not in class_already_enrolled:
             accumulated_samples[cls] = operating_batch[cls][unknowness_scores[cls]]
+            t += operating_batch[cls].shape[0]
+            k += accumulated_samples[cls].shape[0]
+    logger.critical(f"Accumulated {k} samples from {t} unknowns")
     return accumulated_samples
 
 
@@ -48,7 +53,12 @@ def learn_new_unknowns_UDA_Thresh(args, operating_batch, class_already_enrolled,
                                                       unknowness_threshold=threshold_scores[-1])
     accumulated_samples = {}
     class_names = sorted(list(set(operating_batch.keys())))
+    k = 0
+    t = 0
     for cls in class_names:
         if cls not in class_already_enrolled:
             accumulated_samples[cls] = operating_batch[cls][unknowness_scores[cls]]
+            t += operating_batch[cls].shape[0]
+            k += accumulated_samples[cls].shape[0]
+    logger.critical(f"Accumulated {k} samples from {t} unknowns")
     return accumulated_samples

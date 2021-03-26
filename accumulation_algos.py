@@ -33,10 +33,10 @@ def learn_new_unknowns(args, operating_batch, class_already_enrolled, probabilit
     t = 0
     for cls in class_names:
         if cls not in class_already_enrolled:
+            t += operating_batch[cls].shape[0]
             filtered_data = operating_batch[cls][unknowness_scores[cls]]
             if filtered_data.shape[0]==0: continue
             accumulated_samples[cls] = filtered_data
-            t += operating_batch[cls].shape[0]
             k += accumulated_samples[cls].shape[0]
     logger.critical(f"Accumulated {k} samples from {t} unknowns")
     return accumulated_samples

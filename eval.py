@@ -132,10 +132,12 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
     CCA = []
     threshold_scores = []
     table_data = []
-    all_batches_known_classes = []
+    new_classes_per_batch = []
     no_of_batches_considered = len(results_for_all_batches.keys())-1
+    all_classes_seen_till_batch=set()
     for batch_no in sorted(results_for_all_batches.keys())[:-1]:
-        all_batches_known_classes.append(results_for_all_batches[batch_no]['classes_order'])
+        new_classes_per_batch.append(set(results_for_all_batches[batch_no]['classes_order'])-all_classes_seen_till_batch)
+        all_classes_seen_till_batch=all_classes_seen_till_batch.union(new_classes_per_batch[-1])
         unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
                            set(results_for_all_batches[batch_no]['classes_order']) -
                            {'classes_order'})
@@ -158,8 +160,8 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
         threshold_scores.append(current_batch_scores_[UDA_correct>=UDA_threshold][-1])
 
         per_incremental_batch_CCA = []
-        for a in all_batches_known_classes:
-            classes_to_consider_as_unknowns = set(unknown_classes).union(set(all_batches_known_classes[-1])) - set(a)
+        for a in new_classes_per_batch:
+            classes_to_consider_as_unknowns = set(unknown_classes).union(all_classes_seen_till_batch) - a
             classes_to_consider_as_unknowns = np.array(list(classes_to_consider_as_unknowns))
             current_batch_scores_, CCA_correct, _, _ = eval_data_prep(current_batch_scores,
                                                                       current_batch_prediction,
@@ -171,7 +173,7 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
                 per_incremental_batch_CCA.append(f"{CCA_correct[UDA_correct >= UDA_threshold][-1] * 100.:.2f}")
             else:
                 per_incremental_batch_CCA.append("0.0")
-        for k in range(no_of_batches_considered-len(all_batches_known_classes)):
+        for k in range(no_of_batches_considered-len(new_classes_per_batch)):
             per_incremental_batch_CCA.append("")
 
         table_row = [batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"]

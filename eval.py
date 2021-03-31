@@ -126,14 +126,16 @@ def fixed_probability_score(results_for_all_batches, unknowness_threshold=0.5):
     return UDA, OCA, CCA
 
 
-
 def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
     UDA = []
     OCA = []
     CCA = []
     threshold_scores = []
     table_data = []
+    all_batches_known_classes = []
+    no_of_batches_considered = len(results_for_all_batches.keys())-1
     for batch_no in sorted(results_for_all_batches.keys())[:-1]:
+        all_batches_known_classes.append(results_for_all_batches[batch_no]['classes_order'])
         unknown_classes = (set(results_for_all_batches[batch_no].keys()) -
                            set(results_for_all_batches[batch_no]['classes_order']) -
                            {'classes_order'})
@@ -147,19 +149,43 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
             current_batch_scores.extend(max_scores.values.tolist())
             current_batch_prediction.extend(scores_order[max_scores.indices].tolist())
             current_batch_gt.extend([test_cls]*max_scores.values.shape[0])
-        current_batch_scores, CCA_correct, UDA_correct, OCA_correct = eval_data_prep(current_batch_scores,
+        current_batch_scores_, CCA_correct, UDA_correct, OCA_correct = eval_data_prep(current_batch_scores,
                                                                                      current_batch_prediction,
                                                                                      current_batch_gt, unknown_classes)
         UDA.append(UDA_correct[UDA_correct>=UDA_threshold][-1]*100.)
         OCA.append(OCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
         CCA.append(CCA_correct[UDA_correct>=UDA_threshold][-1]*100.)
-        threshold_scores.append(current_batch_scores[UDA_correct>=UDA_threshold][-1])
-        table_data.append((batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
-    table_data.append(("Average", "", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+        threshold_scores.append(current_batch_scores_[UDA_correct>=UDA_threshold][-1])
+
+        per_incremental_batch_CCA = []
+        for a in all_batches_known_classes:
+            classes_to_consider_as_unknowns = set(unknown_classes).union(set(all_batches_known_classes[-1])) - set(a)
+            classes_to_consider_as_unknowns = np.array(list(classes_to_consider_as_unknowns))
+            current_batch_scores_, CCA_correct, _, _ = eval_data_prep(current_batch_scores,
+                                                                      current_batch_prediction,
+                                                                      current_batch_gt,
+                                                                      classes_to_consider_as_unknowns)
+            assert CCA_correct.shape[0]==UDA_correct.shape[0],\
+                "Threshold tie breaking might be causing an issue"
+            if len(CCA_correct[UDA_correct >= UDA_threshold])>0:
+                per_incremental_batch_CCA.append(f"{CCA_correct[UDA_correct >= UDA_threshold][-1] * 100.:.2f}")
+            else:
+                per_incremental_batch_CCA.append("0.0")
+        for k in range(no_of_batches_considered-len(all_batches_known_classes)):
+            per_incremental_batch_CCA.append("")
+
+        table_row = [batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"]
+        table_row.extend(per_incremental_batch_CCA)
+        table_data.append(table_row)
+    table_row = ["Average", "", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"]
+    table_row.extend([""]*no_of_batches_considered)
+    table_data.append(table_row)
+    table_header = ["Batch No", "Score", "UDA", "OCA", "CCA"]
+    table_header.extend([f"B.No.{i}" for i in range(no_of_batches_considered)])
     table_data_str = tt.to_string(table_data,
-                                  header=["Batch No", "Score", "UDA", "OCA", "CCA"],
+                                  header=table_header,
                                   style=tt.styles.rounded_thick,
-                                  alignment="ccccc",
+                                  alignment="ccccc"+''.join(["c"]*no_of_batches_considered),
                                   padding=(0, 1))
     logger.warning("\n"+table_data_str)
     return UDA, OCA, CCA, threshold_scores

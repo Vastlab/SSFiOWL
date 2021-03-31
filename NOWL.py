@@ -31,6 +31,7 @@ def command_line_options():
                         help="Enroll new classes considering all previously encountered samples\ndefault: %(default)s")
 
     parser.add_argument("--output_dir", type=str, default='/scratch/adhamija/results/', help="Results directory")
+
     parser.add_argument('--OOD_Algo', default='OpenMax', type=str, choices=['OpenMax','EVM','MultiModalOpenMax'],
                         help='Name of the Out of Distribution detection algorithm\ndefault: %(default)s')
 
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     net_ops_obj = network_operations.network(num_classes=0,
                                              input_feature_size=val_features[list(val_features.keys())[0]]['features'].shape[1])
     probabilities_for_train_set = {}
+    stored_exemplars = {}
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
         current_batch = get_current_batch(classes, features, batch_nos, batch, images)
@@ -132,32 +134,39 @@ if __name__ == "__main__":
             probabilities_for_train_set[batch]['classes_order'] = net_ops_obj.cls_names
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names, probabilities_for_train_set, batch)
+        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names,
+                                                probabilities_for_train_set, batch)
 
-        exemplars_to_add={}
         # Add exemplars
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-            exemplars_to_add = exemplar_selection.random_selector(features, net_ops_obj.cls_names,
+            exemplars_to_add = exemplar_selection.random_selector(current_batch, net_ops_obj.cls_names,
                                                                   no_of_exemplars=args.no_of_exemplars)
-            accumulated_samples.update(exemplars_to_add)
+            for e in exemplars_to_add:
+                if e not in stored_exemplars:
+                    stored_exemplars[e] = exemplars_to_add[e]
+            accumulated_samples.update(stored_exemplars)
         # Add all negative samples
         if args.all_samples and batch!=0:
-            exemplars_to_add = exemplar_selection.add_all_negatives(features, net_ops_obj.cls_names)
-            current_batch.update(exemplars_to_add)
+            logger.warning("Taking all samples as exemplars")
+            exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, net_ops_obj.cls_names)
+            for e in exemplars_to_add:
+                if e not in stored_exemplars:
+                    stored_exemplars[e] = exemplars_to_add[e]
+            accumulated_samples.update(stored_exemplars)
 
         # Run enrollment for unknown samples
-        no_of_classes_to_enroll = len(accumulated_samples) - len(exemplars_to_add)
-        logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(exemplars_to_add)} exemplar batches '.center(90, '#')}")
+        no_of_classes_to_enroll = len(accumulated_samples) - len(stored_exemplars)
+        logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(stored_exemplars)} exemplar batches '.center(90, '#')}")
         net_ops_obj.training(training_data=accumulated_samples,
                              lr=1e-2 if batch==0 else 1e-3,
                              epochs=400 if batch==0 else 300)
 
         logger.info(f"Preparing validation data")
-        current_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
+        current_validation_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
                                           classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
         logger.info(f"Running on validation data")
-        results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
+        results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_validation_batch)
         results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
 
     dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \

@@ -95,36 +95,47 @@ if __name__ == "__main__":
 
         results_for_all_batches = {}
         completed_q = mp.Queue()
+        stored_exemplars = {}
+        current_batch = {}
         for batch in set(batch_nos.tolist()):
             logger.info(f"Preparing training batch {batch}")
-            current_batch = {}
+
+            exemplars_to_add = None
             # Add exemplars
-            if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-                current_batch.update(exemplar_selection.random_selector(features, net_ops_obj.cls_names, no_of_exemplars=args.no_of_exemplars))
+            if batch!=0 and not args.all_samples:
+                exemplars_to_add = exemplar_selection.random_selector(current_batch, net_ops_obj.cls_names,
+                                                                      no_of_exemplars=args.no_of_exemplars)
             # Add all negative samples
             if args.all_samples and batch!=0:
-                current_batch.update(exemplar_selection.add_all_negatives(features, net_ops_obj.cls_names))
+                exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, net_ops_obj.cls_names)
+
+            if exemplars_to_add is not None:
+                for e in exemplars_to_add:
+                    if e not in stored_exemplars:
+                        stored_exemplars[e] = exemplars_to_add[e]
+                current_batch.update(stored_exemplars)
 
             for cls in sorted(set(classes[batch_nos==batch].tolist())-set(net_ops_obj.cls_names)):
                 indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes==cls)]))[0]
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
                 current_batch[cls] = features[cls]['features'].gather(0, indx_of_interest)
+
             logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
             no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
             net_ops_obj.training(training_data=current_batch ,lr=1e-2)
 
             logger.info(f"Preparing validation data")
-            current_batch = {}
+            current_validation_batch = {}
             for cls in sorted(set(val_classes[val_batch_nos==batch].tolist())):
                 indx_of_interest = np.where(np.in1d(val_features[cls]['images'], val_images[(val_batch_nos == batch) & (val_classes==cls)]))[0]
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, val_features[cls]['features'].shape[1])
-                current_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
+                current_validation_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
             logger.info(f"Running on validation data")
 
-            results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_batch)
+            results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_validation_batch)
             results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
 
         args.output_dir=pathlib.Path(args.output_dir)

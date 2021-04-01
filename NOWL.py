@@ -48,7 +48,7 @@ def command_line_options():
                         help="unknowness probability score above which a sample is considered as unknown\n"
                              "Note: Cannot be a list because this varies results at each operational batch"
                              "default: %(default)s")
-    parser.add_argument("--UDA_Threshold", nargs="+", type=float, default=[0.7, 0.8, 0.9, 0.95, 1.0],
+    parser.add_argument("--UDA_Threshold", nargs="+", type=float, default=[0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0],
                                    help="UDA Threshold for evaluation\ndefault: %(default)s")
 
     protocol_params = parser.add_argument_group('Protocol params')

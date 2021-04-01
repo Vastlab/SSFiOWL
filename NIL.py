@@ -124,7 +124,7 @@ if __name__ == "__main__":
             logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
             no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
-            net_ops_obj.training(training_data=current_batch ,lr=1e-2)
+            net_ops_obj.training(training_data=current_batch, epochs=300, lr=1e-2 if batch==0 else 1e-3)
 
             logger.info(f"Preparing validation data")
             current_validation_batch = {}

@@ -13,12 +13,15 @@ def random_selector(features, classes_of_interest, no_of_exemplars=None):
         torch.manual_seed(0)
         random.seed(0)
         np.random.seed(0)
-        ind_of_interest = torch.randint(features[cls_name].shape[0],
-                                        (min(no_of_exemplars,
-                                             features[cls_name].shape[0]),
-                                         1))
-        current_exemplars = features[cls_name].gather(
-                                            0, ind_of_interest.expand(-1, features[cls_name].shape[1]))
+        if no_of_exemplars!=0:
+            ind_of_interest = torch.randint(features[cls_name].shape[0],
+                                            (min(no_of_exemplars,
+                                                 features[cls_name].shape[0]),
+                                             1))
+            current_exemplars = features[cls_name].gather(
+                                                0, ind_of_interest.expand(-1, features[cls_name].shape[1]))
+        else:
+            current_exemplars = torch.tensor([])
         exemplars_to_return[cls_name]=current_exemplars
     return exemplars_to_return
 

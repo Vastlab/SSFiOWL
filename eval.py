@@ -77,12 +77,19 @@ def calculate_CCA_on_thresh(results_for_all_batches, threshold=0.):
         CCA.append(CCA_correct[current_batch_scores>=threshold][-1]*100.)
         table_data.append((batch_no, f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
     table_data.append(("Average", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+    table_header = ["Batch No", "UDA", "OCA", "CCA"]
     table_data_str = tt.to_string(table_data,
-                                  header=["Batch No", "UDA", "OCA", "CCA"],
+                                  header=table_header,
                                   style=tt.styles.rounded_thick,
                                   alignment="cccc",
                                   padding=(0, 1))
-    logger.warning("\n" + table_data_str)
+    logger.error("\n" + table_data_str)
+    table_data_str = tt.to_string(table_data,
+                                  header=table_header,
+                                  style=" &             ",
+                                  alignment="cccc",
+                                  padding=(0, 1))
+    logger.warning("\n\nTable in latex format\n\n"+table_data_str+"\n\n")
     return UDA, OCA, CCA
 
 
@@ -117,12 +124,19 @@ def fixed_probability_score(results_for_all_batches, unknowness_threshold=0.5):
         threshold_scores.append(current_batch_scores[current_batch_scores>=unknowness_threshold][-1])
         table_data.append((batch_no, f"{threshold_scores[-1]:.3f}", f"{UDA[-1]:.2f}", f"{OCA[-1]:.2f}", f"{CCA[-1]:.2f}"))
     table_data.append(("Average", "", f"{np.mean(UDA):.2f}", f"{np.mean(OCA):.2f}", f"{np.mean(CCA):.2f}"))
+    table_header = ["Batch No", "Score", "UDA", "OCA", "CCA"]
     table_data_str = tt.to_string(table_data,
-                                  header=["Batch No", "Score", "UDA", "OCA", "CCA"],
+                                  header=table_header,
                                   style=tt.styles.rounded_thick,
                                   alignment="ccccc",
                                   padding=(0, 1))
-    logger.warning("\n" + table_data_str)
+    logger.error("\n" + table_data_str)
+    table_data_str = tt.to_string(table_data,
+                                  header=table_header,
+                                  style=" &             ",
+                                  alignment="ccccc",
+                                  padding=(0, 1))
+    logger.warning("\n\nTable in latex format\n\n"+table_data_str+"\n\n")
     return UDA, OCA, CCA
 
 
@@ -189,5 +203,11 @@ def fixed_UDA_eval(results_for_all_batches, UDA_threshold=0.9):
                                   style=tt.styles.rounded_thick,
                                   alignment="ccccc"+''.join(["c"]*no_of_batches_considered),
                                   padding=(0, 1))
-    logger.warning("\n"+table_data_str)
+    logger.error("\n"+table_data_str)
+    table_data_str = tt.to_string(table_data,
+                                  header=table_header,
+                                  style=" &             ",
+                                  alignment="ccccc"+''.join(["c"]*no_of_batches_considered),
+                                  padding=(0, 1))
+    logger.warning("\n\nTable in latex format\n\n"+table_data_str+"\n\n")
     return UDA, OCA, CCA, threshold_scores

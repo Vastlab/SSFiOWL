@@ -32,8 +32,8 @@ def command_line_options():
 
     parser.add_argument("--output_dir", type=str, default='/scratch/adhamija/results/', help="Results directory")
 
-    parser.add_argument('--OOD_Algo', default='OpenMax', type=str, choices=['OpenMax','EVM','MultiModalOpenMax'],
-                        help='Name of the Out of Distribution detection algorithm\ndefault: %(default)s')
+    parser.add_argument('--OOD_Algo', default='MLP', type=str, choices=['OpenMax','EVM','MultiModalOpenMax','MLP'],
+                        help='Name of the approach')
 
     parser = data_prep.params(parser)
 
@@ -72,7 +72,17 @@ def command_line_options():
                                             usage=argparse.SUPPRESS,
                                             description = "This script runs the open world experiments from the paper"
                                                           "i.e. Table 3")
-    parser, _ = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
+    if known_args.OOD_Algo!="MLP":
+        parser, _ = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
+    else:
+        MLP_params_parser = params_parser.add_argument_group(title="MLP", description="MLP params")
+        MLP_params_parser.add_argument("--lr", nargs="+", type=float, default=[1e-2, 1e-3],
+                                       help="Learning rate to use at various learning batches."
+                                            "If two lr are provided they correspond to 1st and rest of the batches.")
+        MLP_params_parser.add_argument("--epochs", nargs="+", type=int, default=[400, 300],
+                                       help="Number of epochs to train for each batch."
+                                            "If two numbers are provided they correspond to the 1st and rest")
+        parser = params_parser
     args = parser.parse_args()
     return args
 
@@ -115,11 +125,11 @@ if __name__ == "__main__":
     args.feature_files = args.validation_feature_files
     val_features = data_prep.prep_all_features_parallel(args)
 
-    results_for_all_batches = {}
     completed_q = mp.Queue()
+    event = mp.Event()
     list_of_all_batch_nos = set(batch_nos.tolist())
-    net_ops_obj = network_operations.network(num_classes=0,
-                                             input_feature_size=val_features[list(val_features.keys())[0]]['features'].shape[1])
+    results_for_all_batches = {}
+    models_across_batches = {}
     probabilities_for_train_set = {}
     stored_exemplars = {}
     for batch in list_of_all_batch_nos:
@@ -128,18 +138,22 @@ if __name__ == "__main__":
 
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
         probabilities_for_train_set[batch]={}
-        if len(net_ops_obj.cls_names)>0:
+        if len(models_across_batches)>0:
             logger.info(f"Getting probabilities for the current operational batch")
-            probabilities_for_train_set[batch] = net_ops_obj.inference(validation_data=current_batch)
-            probabilities_for_train_set[batch]['classes_order'] = net_ops_obj.cls_names
+            common_operations.call_specific_approach(0, batch, args, current_batch, completed_q,
+                                                     event=event, models=models_across_batches)
+            probabilities_for_train_set[batch].update(common_operations.convert_q_to_dict(args, completed_q,
+                                                                                      None, event=event))
+            probabilities_for_train_set[batch]['classes_order'] = [*models_across_batches]
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, net_ops_obj.cls_names,
+        accumulated_samples = accumulation_algo(args, current_batch, [*models_across_batches],
                                                 probabilities_for_train_set, batch)
 
         # Add exemplars
+        # Based on a set number of exemplars
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-            exemplars_to_add = exemplar_selection.random_selector(current_batch, net_ops_obj.cls_names,
+            exemplars_to_add = exemplar_selection.random_selector(current_batch, [*models_across_batches],
                                                                   no_of_exemplars=args.no_of_exemplars)
             for e in exemplars_to_add:
                 if e not in stored_exemplars:
@@ -148,7 +162,7 @@ if __name__ == "__main__":
         # Add all negative samples
         if args.all_samples and batch!=0:
             logger.warning("Taking all samples as exemplars")
-            exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, net_ops_obj.cls_names)
+            exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, [*models_across_batches])
             for e in exemplars_to_add:
                 if e not in stored_exemplars:
                     stored_exemplars[e] = exemplars_to_add[e]
@@ -157,31 +171,28 @@ if __name__ == "__main__":
         # Run enrollment for unknown samples
         no_of_classes_to_enroll = len(accumulated_samples) - len(stored_exemplars)
         logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(stored_exemplars)} exemplar batches '.center(90, '#')}")
-        net_ops_obj.training(training_data=accumulated_samples,
-                             lr=1e-2 if batch==0 else 1e-3,
-                             epochs=400 if batch==0 else 300)
+
+        common_operations.call_specific_approach(0, batch, args, accumulated_samples, completed_q, event=event)  #current_batch
+        model = common_operations.convert_q_to_dict(args, completed_q, None, event=event)
 
         logger.info(f"Preparing validation data")
         current_validation_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
                                           classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
-        logger.info(f"Running on validation data")
-        results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_validation_batch)
-        results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
+        results_for_all_batches[batch] = {}
+        if args.OOD_Algo == "MLP":
+            models_across_batches = dict.fromkeys(model.cls_names)
+            results_for_all_batches[batch]['classes_order'] = model.cls_names
+        else:
+            models_across_batches.update(model)
+            results_for_all_batches[batch]['classes_order'] = sorted([*models_across_batches])
 
-    dir_name = f"OpenWorld_Learning/InitialClasses-{args.initialization_classes}_TotalClasses-{args.total_no_of_classes}" \
-               f"_NewClassesPerBatch-{args.new_classes_per_batch}"
-    if args.OOD_Algo == 'EVM':
-        file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.cover_threshold}_{args.distance_multiplier}"
-    else:
-        file_name = f"{args.distance_metric}_{args.OOD_Algo}Params-{args.tailsize}_{args.distance_multiplier}"
-    if args.all_samples:
-        file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/all_samples/")
-    else:
-        file_path = pathlib.Path(f"{args.output_dir}/{dir_name}/no_of_exemplars_{args.no_of_exemplars}/")
-    file_path.mkdir(parents=True, exist_ok=True)
-    logger.critical(f"Saving to path {file_path}")
-    pickle.dump(results_for_all_batches, open(f"{file_path}/{args.OOD_Algo}_{file_name}.pkl", "wb"))
+        logger.info(f"Running on validation data")
+        common_operations.call_specific_approach(0, batch, args, current_validation_batch, completed_q,
+                                                 event=event, models=models_across_batches)
+        results_for_all_batches[batch].update(common_operations.convert_q_to_dict(args, completed_q,
+                                                                                  None, event=event))
+
     UDA, OCA, CCA = eval.fixed_probability_score(results_for_all_batches, unknowness_threshold=args.unknowness_threshold)
     logger.critical(f"For Tabeling")
     logger.critical(f"Thresholding on scores {np.mean(UDA):.2f} & {np.mean(OCA):.2f} & {np.mean(CCA):.2f}")

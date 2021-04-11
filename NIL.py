@@ -1,14 +1,12 @@
 import argparse
-import torch
-import numpy as np
-import torch.multiprocessing as mp
 import pathlib
-import itertools
+import numpy as np
+import torch
+import torch.multiprocessing as mp
 import protocols
 import exemplar_selection
 import data_prep
-import network_operations
-import viz
+import common_operations
 from vast import opensetAlgos
 from vast.tools import logger as vastlogger
 import eval
@@ -29,8 +27,8 @@ def command_line_options():
                         help="Enroll new classes considering all previously encountered samples\ndefault: %(default)s")
 
     parser.add_argument("--output_dir", type=str, default='/scratch/adhamija/results/', help="Results directory")
-    parser.add_argument('--OOD_Algo', default='EVM', type=str, choices=['OpenMax','EVM','MultiModalOpenMax'],
-                        help='Name of the openset detection algorithm\ndefault: %(default)s')
+    parser.add_argument('--OOD_Algo', default='MLP', type=str, choices=['OpenMax','EVM','MultiModalOpenMax','MLP'],
+                        help='Name of the approach')
 
     parser = data_prep.params(parser)
 
@@ -49,9 +47,22 @@ def command_line_options():
                                             usage=argparse.SUPPRESS,
                                             description = "This script runs experiments for incremental learning " 
                                                           "i.e. Table 1 and 2 from the Paper")
-    parser, _ = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
+    if known_args.OOD_Algo!="MLP":
+        parser, _ = getattr(opensetAlgos, known_args.OOD_Algo + '_Params')(params_parser)
+    else:
+        MLP_params_parser = params_parser.add_argument_group(title="MLP", description="MLP params")
+        MLP_params_parser.add_argument("--lr", nargs="+", type=float, default=[1e-2, 1e-3],
+                                       help="Learning rate to use at various learning batches."
+                                            "If two lr are provided they correspond to 1st and rest of the batches.")
+        MLP_params_parser.add_argument("--epochs", nargs="+", type=int, default=[300],
+                                       help="Number of epochs to train for each batch."
+                                            "If two numbers are provided they correspond to the 1st and rest")
+        parser = params_parser
     args = parser.parse_args()
     return args
+
+
+
 
 
 if __name__ == "__main__":
@@ -64,11 +75,7 @@ if __name__ == "__main__":
     logger = vastlogger.setup_logger(level=args.verbose, output=args.output_dir)
     all_new_classes_per_batch = args.new_classes_per_batch
 
-    all_grid_search_results = []
-    per_class_best_results = []
-    tabular_results = []
-
-    org_dm, org_ct = args.distance_multiplier, args.cover_threshold
+    event = mp.Event()
 
     for exp_no, new_classes_per_batch in enumerate(all_new_classes_per_batch):
         args.new_classes_per_batch = new_classes_per_batch
@@ -89,25 +96,22 @@ if __name__ == "__main__":
             args.feature_files = args.validation_feature_files
             val_features = data_prep.prep_all_features_parallel(args, all_class_names=list(set(val_classes.tolist())))
 
-        net_ops_obj = network_operations.network(num_classes=0,
-                                                 input_feature_size=
-                                                 val_features[list(val_features.keys())[0]]['features'].shape[1])
-
         results_for_all_batches = {}
         completed_q = mp.Queue()
         stored_exemplars = {}
         current_batch = {}
+        models_across_batches = {}
         for batch in set(batch_nos.tolist()):
             logger.info(f"Preparing training batch {batch}")
 
             exemplars_to_add = None
             # Add exemplars
             if batch!=0 and not args.all_samples:
-                exemplars_to_add = exemplar_selection.random_selector(current_batch, net_ops_obj.cls_names,
+                exemplars_to_add = exemplar_selection.random_selector(current_batch, [*models_across_batches],
                                                                       no_of_exemplars=args.no_of_exemplars)
             # Add all negative samples
             if args.all_samples and batch!=0:
-                exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, net_ops_obj.cls_names)
+                exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, [*models_across_batches])
 
             if exemplars_to_add is not None:
                 for e in exemplars_to_add:
@@ -115,7 +119,8 @@ if __name__ == "__main__":
                         stored_exemplars[e] = exemplars_to_add[e]
                 current_batch.update(stored_exemplars)
 
-            for cls in sorted(set(classes[batch_nos==batch].tolist())-set(net_ops_obj.cls_names)):
+            new_classes_to_add = sorted(set(classes[batch_nos==batch].tolist())-set([*models_across_batches]))
+            for cls in new_classes_to_add:
                 indx_of_interest = np.where(np.in1d(features[cls]['images'], images[(batch_nos == batch) & (classes==cls)]))[0]
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, features[cls]['features'].shape[1])
@@ -124,7 +129,10 @@ if __name__ == "__main__":
             logger.info(f"Processing batch {batch}/{len(set(batch_nos.tolist()))}")
 
             no_of_classes_to_process = len(set(classes[batch_nos==batch].tolist()))
-            net_ops_obj.training(training_data=current_batch, epochs=300, lr=1e-2 if batch==0 else 1e-3)
+
+            common_operations.call_specific_approach(0, batch, args, current_batch, completed_q, event,
+                                                     new_classes_to_add = new_classes_to_add)
+            model = common_operations.convert_q_to_dict(args, completed_q, None, event)
 
             logger.info(f"Preparing validation data")
             current_validation_batch = {}
@@ -133,25 +141,22 @@ if __name__ == "__main__":
                 indx_of_interest = torch.tensor(indx_of_interest, dtype=torch.long)
                 indx_of_interest = indx_of_interest[:,None].expand(-1, val_features[cls]['features'].shape[1])
                 current_validation_batch[cls] = val_features[cls]['features'].gather(0, indx_of_interest)
-            logger.info(f"Running on validation data")
 
-            results_for_all_batches[batch] = net_ops_obj.inference(validation_data=current_validation_batch)
-            results_for_all_batches[batch]['classes_order'] = net_ops_obj.cls_names
+            results_for_all_batches[batch] = {}
+            if args.OOD_Algo == "MLP":
+                models_across_batches = dict.fromkeys(model.cls_names)
+                results_for_all_batches[batch]['classes_order'] = model.cls_names
+            else:
+                models_across_batches.update(model)
+                results_for_all_batches[batch]['classes_order'] = sorted([*models_across_batches])
+            logger.info(f"Running on validation data")
+            common_operations.call_specific_approach(0, batch, args, current_validation_batch, completed_q, event,
+                                                     models_across_batches, new_classes_to_add = new_classes_to_add)
+            results_for_all_batches[batch].update(common_operations.convert_q_to_dict(args,completed_q,
+                                                                                      None, event))
 
         args.output_dir=pathlib.Path(args.output_dir)
         args.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.critical(f"Results for {new_classes_per_batch} new classes/batch DM {args.distance_multiplier}"
-                        f" CT {args.cover_threshold}")
+        logger.critical(f"Results for {new_classes_per_batch} class increments")
 
         UDA, OCA, CCA = eval.calculate_CCA_on_thresh(results_for_all_batches, threshold=0.)
-        all_grid_search_results.append((f"{new_classes_per_batch:03d}", f"{np.mean(CCA):06.2f}",
-                                        f"{args.distance_multiplier[0]}", f"{args.cover_threshold[0]}"))
-
-        all_grid_search_results = sorted(all_grid_search_results)
-        per_class_best_results.append(' '.join(all_grid_search_results[-1]))
-        tabular_results.append(all_grid_search_results[-1][1])
-        logger.critical("Grid Search Results:\n"+'\n'.join((' '.join(_) for _ in all_grid_search_results)))
-    logger.critical("Best Results:\n"+'\n'.join(per_class_best_results))
-
-    if len(all_new_classes_per_batch)>1:
-        logger.critical(' & '.join(tabular_results))

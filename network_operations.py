@@ -57,6 +57,9 @@ class network():
             training_tensor_y[training_tensor_label==cls]=cls_no
             sample_weights[training_tensor_label==cls]/=sample_weights[training_tensor_label==cls].shape[0]
 
+        logger.debug(f"Training dataset size {list(training_tensor_x.shape)} "
+                     f"labels size {list(training_tensor_y.shape)} "
+                     f"sample weights size {list(sample_weights.shape)}")
         self.dataset = data_util.TensorDataset(training_tensor_x, training_tensor_y, sample_weights)
         self.cls_names = classes_in_consideration
 
@@ -65,8 +68,8 @@ class network():
         optimizer = torch.optim.SGD(self.net.parameters(), lr=lr, momentum=0.9)
         loader = data_util.DataLoader(self.dataset, batch_size=batch_size)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
-        no_of_print_statements=10
-        printing_interval=epochs//no_of_print_statements
+        no_of_print_statements = min(10,epochs)
+        printing_interval = epochs//no_of_print_statements
         for epoch in range(epochs):
             loss_history=[]
             train_accuracy = torch.zeros(2, dtype=int)
@@ -94,4 +97,5 @@ class network():
             with torch.no_grad():
                 logits = self.net(validation_data[cls].type(torch.FloatTensor).cuda()).cpu()
                 results[cls] = torch.nn.functional.softmax(logits, dim=1)
+        logger.info(f"Inference done on {len(results)} classes")
         return results

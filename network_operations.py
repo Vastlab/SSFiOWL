@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from vast import losses
 import torch.utils.data as data_util
+from torch.utils.tensorboard import SummaryWriter
 from vast.tools import logger as vastlogger
 torch.manual_seed(0)
 
@@ -20,11 +21,12 @@ class MLP(nn.Module):
         return x
 
 class network():
-    def __init__(self, num_classes, input_feature_size):
+    def __init__(self, num_classes, input_feature_size, output_dir = None):
         self.net = MLP(num_classes=num_classes, input_feature_size=input_feature_size)
         self.net = self.net.cuda()
         self.cls_names = []
         self.input_feature_size = input_feature_size
+        self.output_dir = output_dir
 
     def modify_net(self, new_num_classes):
         torch.manual_seed(0)
@@ -70,6 +72,9 @@ class network():
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         no_of_print_statements = min(10,epochs)
         printing_interval = epochs//no_of_print_statements
+        summary_writer = None
+        if self.output_dir is not None:
+            summary_writer = SummaryWriter(f"{self.output_dir}/MLP_training_logs")
         for epoch in range(epochs):
             loss_history=[]
             train_accuracy = torch.zeros(2, dtype=int)
@@ -86,6 +91,11 @@ class network():
             to_print=f"Epoch {epoch:03d}/{epochs:03d} \t"\
                      f"train-loss: {np.mean(loss_history):1.5f}  \t"\
                      f"accuracy: {float(train_accuracy[0]) / float(train_accuracy[1]):9.5f}"
+            if summary_writer is not None:
+                summary_writer.add_scalar(f"{len(self.cls_names)}/loss",
+                                          np.mean(loss_history), epoch)
+                summary_writer.add_scalar(f"{len(self.cls_names)}/accuracy",
+                                          float(train_accuracy[0])/float(train_accuracy[1]), epoch)
             if epoch%printing_interval==0:
                 logger.info(to_print)
             else:

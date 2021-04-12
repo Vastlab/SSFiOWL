@@ -120,7 +120,7 @@ class OWL_on_a_budget():
         return pseudo_label_dict
 
     @vastlogger.time_recorder
-    def __OWL_on_a_budget__(self, args, operating_batch, OOD_model, probabilities_for_operating_batch):
+    def __OWL_on_a_budget__(self, args, operating_batch, OOD_model, probabilities_for_operating_batch, batch_no):
         """
         :param operating_batch: This is the data whose subset will be used for training, its keys should never be used
         :param OOD_model:
@@ -130,13 +130,13 @@ class OWL_on_a_budget():
 
         # Filter knowns vs unknwons from the operating batch.
         # If we do not have any model trained for the knowns, consider all samples as unknowns.
-        if len(OOD_model.keys()) == 0:
+        if len(OOD_model) == 0:
             accumulated_samples = operating_batch
             budget = args.initial_no_of_samples if args.initialization_batch_annotation_budget \
                                                    is None else args.initialization_batch_annotation_budget
         else:
             budget = args.annotation_budget
-            unknowness_scores = find_unknowness_probabilities(probabilities_for_operating_batch,
+            unknowness_scores = find_unknowness_probabilities(probabilities_for_operating_batch[batch_no],
                                                               unknowness_threshold=args.unknowness_threshold)
             accumulated_samples = {}
             class_names = sorted(list(set(operating_batch.keys())))
@@ -157,7 +157,7 @@ class OWL_on_a_budget():
         # Perform clustering on all unknown samples
         Clustering_Algo = getattr(clustering, args.Accumulator_clustering_Algo)
         centroids, assignments = Clustering_Algo(unknown_samples_features, K=min(unknown_samples_features.shape[0], 100),
-                                                 verbose=False, distance_metric=args.distance_metric)
+                                                 verbose=False, distance_metric="euclidean")
         # From the above clusters select the candidate samples that will be used for labeling
         annotation_candidate_indxs = self.__select_samples_for_labeling__(assignments, budget)
         # Hold the GT labels for the annotated samples.

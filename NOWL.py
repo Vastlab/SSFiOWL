@@ -122,11 +122,6 @@ if __name__ == "__main__":
     else:
         accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
 
-    if args.accumulation_algo == "OWL_on_a_budget":
-        accumulation_algo = accumulation_algos.OWL_on_a_budget()
-    else:
-        accumulation_algo = getattr(accumulation_algos, args.accumulation_algo)
-
     # Get the operational protocols
     batch_nos, images, classes = protocols.open_world_protocol(initial_no_of_classes=args.initialization_classes,
                                                                new_classes_per_batch=args.new_classes_per_batch,

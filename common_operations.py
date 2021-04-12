@@ -37,8 +37,8 @@ def call_MLP_approaches(batch_no, args, current_batch, run_training, completed_q
     if run_training:
         if batch_no==0:
             net_obj = network_operations.network(num_classes=0,
-                                                 input_feature_size=current_batch[list(current_batch.keys())[0]].shape[1])
-        # from IPython import embed;embed();
+                                                 input_feature_size=current_batch[list(current_batch.keys())[0]].shape[1],
+                                                 output_dir = args.output_dir)
         epochs = args.epochs[min(len(args.epochs)-1,batch_no)]
         lr = args.lr[min(len(args.lr)-1,batch_no)]
         logger.info(f"Running MLP training with LR {lr} for {epochs} epochs")

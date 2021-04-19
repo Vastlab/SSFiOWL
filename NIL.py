@@ -67,9 +67,11 @@ def command_line_options():
 
 if __name__ == "__main__":
     args = command_line_options()
-    args.world_size = torch.cuda.device_count()
-    if args.world_size==1:
-        args.no_multiprocessing = True
+    
+    # Does not support multi-gpus for now
+    args.world_size = 1
+    args.no_multiprocessing = True
+
     if args.debug:
         args.verbose = 0
     logger = vastlogger.setup_logger(level=args.verbose, output=args.output_dir)

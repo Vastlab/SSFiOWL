@@ -2,6 +2,7 @@ import argparse
 import pathlib
 import numpy as np
 import torch
+torch.multiprocessing.set_sharing_strategy('file_system')
 import torch.multiprocessing as mp
 import protocols
 import exemplar_selection
@@ -119,6 +120,9 @@ if __name__ == "__main__":
                 for e in exemplars_to_add:
                     if e not in stored_exemplars:
                         stored_exemplars[e] = exemplars_to_add[e]
+                        if exemplars_to_add[e].shape[0]==0:
+                            if e in stored_exemplars: del stored_exemplars[e]
+                            if e in current_batch: del current_batch[e]
                 current_batch.update(stored_exemplars)
 
             new_classes_to_add = sorted(set(classes[batch_nos==batch].tolist())-set([*models_across_batches]))

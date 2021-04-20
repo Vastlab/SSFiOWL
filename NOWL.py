@@ -153,22 +153,25 @@ if __name__ == "__main__":
                                                 probabilities_for_train_set, batch)
 
         # Add exemplars
+        exemplars_to_add = None
         # Based on a set number of exemplars
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
             exemplars_to_add = exemplar_selection.random_selector(current_batch, [*models_across_batches],
                                                                   no_of_exemplars=args.no_of_exemplars)
-            for e in exemplars_to_add:
-                if e not in stored_exemplars:
-                    stored_exemplars[e] = exemplars_to_add[e]
-            accumulated_samples.update(stored_exemplars)
         # Add all negative samples
         if args.all_samples and batch!=0:
             logger.warning("Taking all samples as exemplars")
             exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, [*models_across_batches])
+
+        if exemplars_to_add is not None:
             for e in exemplars_to_add:
                 if e not in stored_exemplars:
                     stored_exemplars[e] = exemplars_to_add[e]
+                    if exemplars_to_add[e].shape[0] == 0:
+                        if e in stored_exemplars: del stored_exemplars[e]
+                        if e in accumulated_samples: del accumulated_samples[e]
             accumulated_samples.update(stored_exemplars)
+
 
         # Run enrollment for unknown samples
         no_of_classes_to_enroll = len(accumulated_samples) - len(stored_exemplars)

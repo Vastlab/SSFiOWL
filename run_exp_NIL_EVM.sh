@@ -1,209 +1,54 @@
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.3
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_MOCO_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_SimCLR_1x_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_MOCO_v1_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_sela_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_deepcluster_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_10_class/NIL_self-supervised_SWAV_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-
-
-
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.6
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_MOCO_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_SimCLR_1x_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_MOCO_v1_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.6  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_sela_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_deepcluster_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 5 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_5_class/NIL_self-supervised_SWAV_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-
-
-
-
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.7
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_MOCO_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_SimCLR_1x_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_MOCO_v1_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_sela_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_deepcluster_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 2 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_2_class/NIL_self-supervised_SWAV_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-
-
-
-
-
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v2_800ep_pretrain/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.7  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_MOCO_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SimCLR_1x/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_SimCLR_1x_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/moco_v1_200ep_pretrain.pth/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.7
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_MOCO_v1_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/selav2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_sela_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/deepclusterv2/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_deepcluster_v2_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
-
-time python NIL.py --training_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_train.hdf5 \
---validation_feature_files /scratch/adhamija/FeaturesCopy/OpenSetAlgos/SWAV/resnet50/imagenet_1000_val.hdf5 --layer_names avgpool \
---initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 1 --output_dir /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ --no_of_exemplars 20 \
---OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier 0.8  --cover_threshold 0.8
-cp /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/ResNet50_1_class/NIL_self-supervised_SWAV_log.txt
-rm /home/tahmad/work/ICCV2021/temp_log_april19_FFIL/log.txt
-
+#features_path_prefix="/net/pepper/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
+parent_output_dir="/tmp/adhamija/"
+#parent_output_dir="/home/tahmad/work/ICCV2021/temp_log_april19_FFIL/"
+features_path_prefix="/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
+no_of_gpus=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+
+# Each combination is feature file, distance multiplier and cover threshold
+experiments_combinations=("moco_v1_200ep_pretrain.pth 0.6 0.8" \
+                          "SimCLR_1x 0.7 0.8" \
+                          "deepclusterv2 0.8 0.8" \
+                          "moco_v2_800ep_pretrain 0.6 0.3" \
+                          "selav2 0.6 0.8" \
+                          "SWAV 0.7 0.8")
+feature_files=
+all_running_PIDS=()
+exp_no=0
+flag=-1
+
+
+for exp_comb in "${experiments_combinations[@]}"; do
+  read -r feature_file DM CT <<<$exp_comb
+  echo -e "\tFeatures $feature_file\t DM $DM\t CT $CT"
+  port_no=$((5400+$exp_no*100))
+  output_dir="${parent_output_dir}/${feature_file}/"
+  mkdir -p $output_dir
+  set -o xtrace
+  PID=$(nohup sh -c "CUDA_VISIBLE_DEVICES=$exp_no python NIL.py \
+  --training_feature_files $features_path_prefix/$feature_file/resnet50/imagenet_1000_train.hdf5 \
+  --validation_feature_files $features_path_prefix/$feature_file/resnet50/imagenet_1000_val.hdf5 \
+  --layer_names avgpool \
+  --initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch 10 --no_of_exemplars 20 \
+  --output_dir $output_dir \
+  --OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier $DM --cover_threshold $CT \
+  --port_no $port_no -v" >$output_dir"/nohup.log" 2>&1 & echo $!)
+  set +o xtrace
+  echo "Started PID $PID"
+  all_running_PIDS+=($PID)
+  if [ ${#all_running_PIDS[@]} -eq $no_of_gpus ]
+  then
+    echo "Waiting for PID ${all_running_PIDS[0]}"
+    tail --pid=${all_running_PIDS[0]} -f /dev/null
+    echo "PID Ended ${all_running_PIDS[0]}"
+    all_running_PIDS=("${all_running_PIDS[@]:1}") #removed the 1st element
+    exp_no=0+$flag
+    ((flag+=1))
+    if [ $flag -eq $no_of_gpus ]
+    then
+      flag=0
+    fi
+  fi
+  echo "Waiting a moment before starting next set of experiments"
+  sleep 5s
+  ((exp_no+=1))
+done

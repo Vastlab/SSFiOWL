@@ -154,7 +154,7 @@ if __name__ == "__main__":
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
         probabilities_for_train_set[batch]={}
         if len(models_across_batches)>0:
-            logger.info(f"Getting probabilities for the current operational batch")
+            logger.info(f"Getting probabilities for the samples in the current operational batch")
             common_operations.call_specific_approach(0, batch, args, current_batch, completed_q,
                                                      event=event, models=models_across_batches)
             probabilities_for_train_set[batch].update(common_operations.convert_q_to_dict(args, completed_q,
@@ -187,15 +187,16 @@ if __name__ == "__main__":
 
 
         # Run enrollment for unknown samples
-        no_of_classes_to_enroll = len(accumulated_samples) - len(stored_exemplars)
-        logger.info(f"{f' Enrolling {no_of_classes_to_enroll} new classes with {len(stored_exemplars)} exemplar batches '.center(90, '#')}")
+        new_classes_to_add = set([*accumulated_samples]) - set([*stored_exemplars])
+        logger.info(f"{f' Enrolling {len(new_classes_to_add)} new classes with {len(stored_exemplars)} exemplar batches '.center(90, '#')}")
 
-        common_operations.call_specific_approach(0, batch, args, accumulated_samples, completed_q, event=event)  #current_batch
+        common_operations.call_specific_approach(0, batch, args, accumulated_samples, completed_q, event=event,
+                                                 new_classes_to_add = new_classes_to_add)
         model = common_operations.convert_q_to_dict(args, completed_q, None, event=event)
 
         logger.info(f"Preparing validation data")
         current_validation_batch = get_current_batch(val_classes, val_features, val_batch_nos, 0, val_images,
-                                          classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
+                                                     classes_to_fetch=set(classes[batch_nos<=min(batch+1,max(batch_nos))].tolist()))
 
         results_for_all_batches[batch] = {}
         if args.OOD_Algo == "MLP":

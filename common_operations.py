@@ -8,7 +8,7 @@ net_obj = None
 to_return = None
 def convert_q_to_dict(args, completed_q, p=None, event=None):
     if args.OOD_Algo == "MLP":
-        return to_return# completed_q.get()
+        return to_return
     all_data = {}
     nb_ended_workers = 0
     k=0
@@ -52,26 +52,19 @@ def call_MLP_approaches(batch_no, args, current_batch, run_training, completed_q
 def call_distance_based_approaches(gpu, batch_no, args, features_all_classes, completed_q, logger, event, models,
                                    new_classes_to_add = None):
     if new_classes_to_add is None:
-        class_names = list(features_all_classes.keys())
-        exemplar_classes = []
-        for _ in class_names:
-            if 'exemplars_' in _:
-                exemplar_classes.append(_)
-        if len(exemplar_classes):
-            logger.info(" Removing Exemplars from positive classes to be processed ".center(90, '#'))
-        class_names = sorted(list(set(class_names)-set(exemplar_classes)))
-    else:
-        class_names = new_classes_to_add
-    div, mod = divmod(len(class_names), args.world_size)
-    pos_classes_to_process = class_names[gpu * div + min(gpu, mod):(gpu + 1) * div + min(gpu + 1, mod)]
-    logger.debug(f"Processing classes {pos_classes_to_process}")
+        new_classes_to_add = [*features_all_classes]
+
+    div, mod = divmod(len(new_classes_to_add), args.world_size)
+    new_classes_to_add_for_this_proc = new_classes_to_add[gpu * div + min(gpu, mod):(gpu + 1) * div + min(gpu + 1, mod)]
 
     if models is None:
+        logger.debug(f"Training for classes {new_classes_to_add_for_this_proc}")
         OOD_Method = getattr(vast.opensetAlgos, args.OOD_Algo + '_Training')
     else:
+        logger.debug(f"Running inference for classes {new_classes_to_add_for_this_proc}")
         OOD_Method = getattr(vast.opensetAlgos, args.OOD_Algo + '_Inference')
     logger.info(f"Calling approach {OOD_Method.__name__}")
-    algorithm_results_iterator = OOD_Method(pos_classes_to_process, features_all_classes, args, gpu, models)
+    algorithm_results_iterator = OOD_Method(new_classes_to_add_for_this_proc, features_all_classes, args, gpu, models)
     for current_class_output in algorithm_results_iterator:
         completed_q.put(current_class_output)
     completed_q.put(("DONE",gpu))

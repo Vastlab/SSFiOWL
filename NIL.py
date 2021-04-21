@@ -157,7 +157,7 @@ if __name__ == "__main__":
                 results_for_all_batches[batch]['classes_order'] = sorted([*models_across_batches])
             logger.info(f"Running on validation data")
             common_operations.call_specific_approach(0, batch, args, current_validation_batch, completed_q, event,
-                                                     models_across_batches, new_classes_to_add = new_classes_to_add)
+                                                     models_across_batches)
             results_for_all_batches[batch].update(common_operations.convert_q_to_dict(args,completed_q,
                                                                                       None, event))
 

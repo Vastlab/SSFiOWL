@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
 
         # Run enrollment for unknown samples
-        new_classes_to_add = set([*accumulated_samples]) - set([*stored_exemplars])
+        new_classes_to_add = sorted(set([*accumulated_samples]) - set([*stored_exemplars]))
         logger.info(f"{f' Enrolling {len(new_classes_to_add)} new classes with {len(stored_exemplars)} exemplar batches '.center(90, '#')}")
 
         common_operations.call_specific_approach(0, batch, args, accumulated_samples, completed_q, event=event,

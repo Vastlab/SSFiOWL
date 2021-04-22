@@ -10,7 +10,25 @@ experiments_combinations=("10 moco_v1_200ep_pretrain.pth 0.6 0.8" \
                           "10 deepclusterv2 0.8 0.8" \
                           "10 moco_v2_800ep_pretrain 0.6 0.3" \
                           "10 selav2 0.6 0.8" \
-                          "10 SWAV 0.7 0.8")
+                          "10 SWAV 0.7 0.8" \
+                          "5 moco_v1_200ep_pretrain.pth 0.6 0.8" \
+                          "5 SimCLR_1x 0.7 0.8" \
+                          "5 deepclusterv2 0.8 0.8" \
+                          "5 moco_v2_800ep_pretrain 0.6 0.6" \
+                          "5 selav2 0.6 0.8" \
+                          "5 SWAV 0.7 0.8" \
+                          "2 moco_v1_200ep_pretrain.pth 0.7 0.8" \
+                          "2 SimCLR_1x 0.8 0.8" \
+                          "2 deepclusterv2 0.8 0.8" \
+                          "2 moco_v2_800ep_pretrain 0.7 0.7" \
+                          "2 selav2 0.8 0.8" \
+                          "2 SWAV 0.8 0.8" \
+                          "1 moco_v1_200ep_pretrain.pth 0.8 0.7" \
+                          "1 SimCLR_1x 0.8 0.8" \
+                          "1 deepclusterv2 0.8 0.8" \
+                          "1 moco_v2_800ep_pretrain 0.7 0.8" \
+                          "1 selav2 0.8 0.8" \
+                          "1 SWAV 0.8 0.8")
 all_running_PIDS=()
 exp_no=0
 flag=-1

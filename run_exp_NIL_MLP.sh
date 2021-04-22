@@ -1,41 +1,45 @@
-#features_path_prefix="/net/pepper/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
+features_path_prefix="/net/pepper/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
 #parent_output_dir="/tmp/adhamija/"
-parent_output_dir="/home/tahmad/work/ICCV2021/temp_log_april21_FFIL/"
-features_path_prefix="/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
+parent_output_dir="/home/tahmad/work/ICCV2021/temp_log/"
+#features_path_prefix="/scratch/adhamija/FeaturesCopy/OpenSetAlgos"
 no_of_gpus=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
 
 # Each combination is feature file, distance multiplier and cover threshold
-experiments_combinations=("10 moco_v1_200ep_pretrain.pth 0.6 0.8" \
-                          "10 SimCLR_1x 0.7 0.8" \
-                          "10 deepclusterv2 0.8 0.8" \
-                          "10 moco_v2_800ep_pretrain 0.6 0.3" \
-                          "10 selav2 0.6 0.8" \
-                          "10 SWAV 0.7 0.8" \
-                          "5 moco_v1_200ep_pretrain.pth 0.6 0.8" \
-                          "5 SimCLR_1x 0.7 0.8" \
-                          "5 deepclusterv2 0.8 0.8" \
-                          "5 moco_v2_800ep_pretrain 0.6 0.6" \
-                          "5 selav2 0.6 0.8" \
-                          "5 SWAV 0.7 0.8" \
-                          "2 moco_v1_200ep_pretrain.pth 0.7 0.8" \
-                          "2 SimCLR_1x 0.8 0.8" \
-                          "2 deepclusterv2 0.8 0.8" \
-                          "2 moco_v2_800ep_pretrain 0.7 0.7" \
-                          "2 selav2 0.8 0.8" \
-                          "2 SWAV 0.8 0.8" \
-                          "1 moco_v1_200ep_pretrain.pth 0.8 0.7" \
-                          "1 SimCLR_1x 0.8 0.8" \
-                          "1 deepclusterv2 0.8 0.8" \
-                          "1 moco_v2_800ep_pretrain 0.7 0.8" \
-                          "1 selav2 0.8 0.8" \
-                          "1 SWAV 0.8 0.8")
+experiments_combinations=("10 supervised_on_batch0" \
+                          "10 moco_v1_200ep_pretrain.pth" \
+                          "10 SimCLR_1x" \
+                          "10 deepclusterv2" \
+                          "10 moco_v2_800ep_pretrain" \
+                          "10 selav2" \
+                          "10 SWAV" \
+                          "5 supervised_on_batch0" \
+                          "5 moco_v1_200ep_pretrain.pth" \
+                          "5 SimCLR_1x" \
+                          "5 deepclusterv2" \
+                          "5 moco_v2_800ep_pretrain" \
+                          "5 selav2" \
+                          "5 SWAV" \
+                          "2 supervised_on_batch0" \
+                          "2 moco_v1_200ep_pretrain.pth" \
+                          "2 SimCLR_1x" \
+                          "2 deepclusterv2" \
+                          "2 moco_v2_800ep_pretrain" \
+                          "2 selav2" \
+                          "2 SWAV" \
+                          "1 supervised_on_batch0" \
+                          "1 moco_v1_200ep_pretrain.pth" \
+                          "1 SimCLR_1x" \
+                          "1 deepclusterv2" \
+                          "1 moco_v2_800ep_pretrain" \
+                          "1 selav2" \
+                          "1 SWAV")
 all_running_PIDS=()
 exp_no=0
 flag=-1
 
 for exp_comb in "${experiments_combinations[@]}"; do
-  read -r new_classes_per_batch feature_file DM CT <<<$exp_comb
-  echo -e "\tFeatures $feature_file\t DM $DM\t CT $CT"
+  read -r new_classes_per_batch feature_file  <<<$exp_comb
+  echo -e "\tFeatures $feature_file"
   port_no=$((5400+$exp_no*100))
   output_dir="${parent_output_dir}/${new_classes_per_batch}/${feature_file}/"
   mkdir -p $output_dir
@@ -46,7 +50,7 @@ for exp_comb in "${experiments_combinations[@]}"; do
   --layer_names avgpool \
   --initialization_classes 50 --total_no_of_classes 100 --new_classes_per_batch $new_classes_per_batch --no_of_exemplars 20 \
   --output_dir $output_dir \
-  --OOD_Algo EVM --tailsize 1. --distance_metric euclidean --distance_multiplier $DM --cover_threshold $CT \
+  --OOD_Algo MLP \
   --port_no $port_no -v" >$output_dir"/${feature_file}_nohup.log" 2>&1 & echo $!)
   set +o xtrace
   echo "Started PID $PID"
@@ -77,7 +81,7 @@ for PID in "${all_running_PIDS[@]}"; do
 done
 
 for exp_comb in "${experiments_combinations[@]}"; do
-  read -r new_classes_per_batch feature_file DM CT <<<$exp_comb
+  read -r new_classes_per_batch feature_file <<<$exp_comb
   output_dir="${parent_output_dir}/${new_classes_per_batch}/${feature_file}/"
   mv $output_dir/log.txt $output_dir/${feature_file}_log.txt
 done

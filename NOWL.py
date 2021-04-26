@@ -136,40 +136,41 @@ if __name__ == "__main__":
     stored_exemplars = {}
     for batch in list_of_all_batch_nos:
         logger.info(f"Preparing batch {batch} from training data (initialization/operational)")
-        current_batch = get_current_batch(classes, features, batch_nos, batch, images)
+        operational_batch = get_current_batch(classes, features, batch_nos, batch, images)
 
         logger.info(f"Processing batch {batch}/{len(list_of_all_batch_nos)}")
         probabilities_for_train_set[batch]={}
         if len(models_across_batches)>0:
             logger.info(f"Getting probabilities for the samples in the current operational batch")
-            common_operations.call_specific_approach(0, batch, args, current_batch, completed_q,
+            common_operations.call_specific_approach(0, batch, args, operational_batch, completed_q,
                                                      event=event, models=models_across_batches)
             probabilities_for_train_set[batch].update(common_operations.convert_q_to_dict(args, completed_q,
                                                                                       None, event=event))
             probabilities_for_train_set[batch]['classes_order'] = [*models_across_batches]
 
         # Accumulate all unknown samples
-        accumulated_samples = accumulation_algo(args, current_batch, [*models_across_batches],
+        accumulated_samples = accumulation_algo(args, operational_batch, [*models_across_batches],
                                                 probabilities_for_train_set, batch)
 
         # Add exemplars
         exemplars_to_add = None
         # Based on a set number of exemplars
         if batch!=0 and args.no_of_exemplars!=0 and not args.all_samples:
-            exemplars_to_add = exemplar_selection.random_selector(current_batch, [*models_across_batches],
+            exemplars_to_add = exemplar_selection.random_selector(operational_batch,
+                                                                  set([*models_across_batches])-set([*stored_exemplars]),
                                                                   no_of_exemplars=args.no_of_exemplars)
         # Add all negative samples
         if args.all_samples and batch!=0:
             logger.warning("Taking all samples as exemplars")
-            exemplars_to_add = exemplar_selection.add_all_negatives(current_batch, [*models_across_batches])
+            exemplars_to_add = exemplar_selection.add_all_negatives(operational_batch,
+                                                                    set([*models_across_batches])-set([*stored_exemplars]))
 
         if exemplars_to_add is not None:
             for e in exemplars_to_add:
-                if e not in stored_exemplars:
-                    stored_exemplars[e] = exemplars_to_add[e]
-                    if exemplars_to_add[e].shape[0] == 0:
-                        if e in stored_exemplars: del stored_exemplars[e]
-                        if e in accumulated_samples: del accumulated_samples[e]
+                stored_exemplars[e] = exemplars_to_add[e]
+                if exemplars_to_add[e].shape[0] == 0:
+                    if e in stored_exemplars: del stored_exemplars[e]
+                    if e in accumulated_samples: del accumulated_samples[e]
             accumulated_samples.update(stored_exemplars)
 
 

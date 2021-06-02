@@ -68,7 +68,7 @@ class network():
     def training(self, training_data, epochs=150, lr=0.01, batch_size=256):
         self.prep_training_data(training_data)
         optimizer = torch.optim.SGD(self.net.parameters(), lr=lr, momentum=0.9)
-        loader = data_util.DataLoader(self.dataset, batch_size=batch_size)
+        loader = data_util.DataLoader(self.dataset, batch_size=batch_size, shuffle=True)
         loss_fn = nn.CrossEntropyLoss(reduction='none')
         no_of_print_statements = min(10,epochs)
         printing_interval = epochs//no_of_print_statements

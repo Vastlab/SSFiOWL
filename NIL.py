@@ -34,6 +34,8 @@ def command_line_options():
     parser = data_prep.params(parser)
 
     protocol_params = parser.add_argument_group('Protocol params')
+    protocol_params.add_argument("--use_cub200", default=False, action="store_true",
+                                 help="Use Cub200 protocol instead of ImageNet\ndefault: %(default)s")
     protocol_params.add_argument("--total_no_of_classes", type=int, default=100,
                                  help="Total no of classes\ndefault: %(default)s")
     protocol_params.add_argument("--initialization_classes", type=int, default=50,
@@ -84,13 +86,17 @@ if __name__ == "__main__":
         args.new_classes_per_batch = new_classes_per_batch
 
         # Get the protocols
-        batch_nos, images, classes = protocols.ImageNetIncremental(initial_no_of_classes=args.initialization_classes,
-                                                                   new_classes_per_batch=args.new_classes_per_batch,
-                                                                   total_classes=args.total_no_of_classes)
-        val_batch_nos, val_images, val_classes = protocols.ImageNetIncremental(files_to_add = ['imagenet_1000_val'],
-                                                                               initial_no_of_classes=args.initialization_classes,
-                                                                               new_classes_per_batch=args.new_classes_per_batch,
-                                                                               total_classes=args.total_no_of_classes)
+        if args.use_cub200:
+            batch_nos, images, classes = protocols.cub200()
+            val_batch_nos, val_images, val_classes = protocols.cub200()
+        else:
+            batch_nos, images, classes = protocols.ImageNetIncremental(initial_no_of_classes=args.initialization_classes,
+                                                                       new_classes_per_batch=args.new_classes_per_batch,
+                                                                       total_classes=args.total_no_of_classes)
+            val_batch_nos, val_images, val_classes = protocols.ImageNetIncremental(files_to_add = ['imagenet_1000_val'],
+                                                                                   initial_no_of_classes=args.initialization_classes,
+                                                                                   new_classes_per_batch=args.new_classes_per_batch,
+                                                                                   total_classes=args.total_no_of_classes)
 
         # Read all Features
         if exp_no == 0:

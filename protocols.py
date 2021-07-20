@@ -11,7 +11,7 @@ def protocol(func):
     def wrapper(*args, files_to_add = ['imagenet_1000_train'], **kwargs):
         all_images = []
         for file_name in files_to_add:
-            with open(f"/home/jschwan2/simclr-converter/{file_name}.csv", "r") as f:
+            with open(f"protocols/ImageNet/{file_name}.csv", "r") as f:
                 images = list(csv.reader(f, delimiter=","))
             images = [(i.split('/')[1], '/'.join(i.split('/')[1:])) for i, _ in images]
             all_images.extend(images)
@@ -154,6 +154,23 @@ def OpenWorldValidation(classes=[],
         if cls_name in classes_of_interest:
             images_of_interest.append((0, image, cls_name))
     return images_of_interest
+
+
+@vastlogger.time_recorder
+def cub200(file_path="protocols/cub200/session_{}.txt"):
+    all_batches=[]
+    for batch_no in range(1,12):
+        images = open(file_path.format(batch_no)).read().splitlines()
+        all_batches.extend(list(itertools.zip_longest([batch_no-1],
+                                                      [i.split('/')[-1] for i in images],
+                                                      [i.split('/')[-2] for i in images],
+                                                      fillvalue=batch_no-1)))
+        logger.info(f"Created batch no {batch_no} with {len(images)} number of samples")
+    batch_nos, images, classes = zip(*all_batches)
+    batch_nos = np.array(batch_nos)
+    images = np.array(images, dtype='<U30')
+    classes = np.array(classes, dtype='<U30')
+    return batch_nos, images, classes
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ article{dhamija2021self,
 ```
 ###### Dependencies
 This repo is dependent on the repo https://github.com/Vastlab/vast that contains some useful functionality for various projects at VastLab.
-Please ensure this repo is cloned and in your path.
+Please install it using `pip install git+https://github.com/Vastlab/vast.git`.
 
 ###### Feature Extraction
 We pre-extract features from the self supervised networks and use them for all our experiments.
